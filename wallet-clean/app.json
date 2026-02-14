@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "wallet-clean",
+    "slug": "wallet-clean",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0A0A0A"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourcompany.wallet"
+    },
+    "android": {
+      "package": "com.yourcompany.wallet"
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}
