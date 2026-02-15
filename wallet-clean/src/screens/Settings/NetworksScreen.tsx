@@ -15,7 +15,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { MainScreenNavigationProp } from "@/types/navigation.types";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { Card } from "@components/common/Card";
 import { Button } from "@components/common/Button";
 import { useNetworkStore } from "@store/networkStore";
@@ -30,6 +31,9 @@ export const NetworksScreen: React.FC = () => {
     setCurrentNetwork,
     init,
   } = useNetworkStore();
+  const { theme: colors } = useTheme();
+
+  const styles = createStyles(colors);
 
   useEffect(() => {
     init();
@@ -126,7 +130,7 @@ export const NetworksScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

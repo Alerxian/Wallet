@@ -5,13 +5,14 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { Button } from "@components/common/Button";
 import { Card } from "@components/common/Card";
 import { MnemonicGrid } from "@components/wallet/MnemonicGrid";
 import { MnemonicWord as MnemonicWordType } from "@/types/wallet.types";
 import { useScreenProtection } from "@hooks/useScreenProtection";
 import type { AuthScreenNavigationProp } from "@/types/navigation.types";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface BackupMnemonicScreenProps {
   navigation: AuthScreenNavigationProp<"BackupMnemonic">;
@@ -22,6 +23,9 @@ export const BackupMnemonicScreen: React.FC<BackupMnemonicScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { mnemonic } = route.params;
   const [confirmed, setConfirmed] = useState(false);
 
@@ -85,7 +89,8 @@ export const BackupMnemonicScreen: React.FC<BackupMnemonicScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -120,4 +125,4 @@ const styles = StyleSheet.create({
   mnemonicCard: {
     marginBottom: spacing.lg,
   },
-});
+  });

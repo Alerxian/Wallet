@@ -5,15 +5,19 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { Button } from "@components/common/Button";
 import type { AuthScreenNavigationProp } from "@/types/navigation.types";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface WelcomeScreenProps {
   navigation: AuthScreenNavigationProp<"Welcome">;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const handleCreateWallet = () => {
     navigation.navigate("GenerateMnemonic", { mnemonicLength: 12 });
   };
@@ -43,18 +47,24 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
             title="安全可靠"
             description="系统级加密存储，助记词永不离开设备"
             gradient={["#1E3A8A", "#3B82F6"]}
+            colors={colors}
+            styles={styles}
           />
           <FeatureCard
             icon="⚡"
             title="快速便捷"
             description="支持多链资产管理，自动网络切换"
-            gradient={["#7C3AED", "#A78BFA"]}
+            gradient={["#0284C7", "#22D3EE"]}
+            colors={colors}
+            styles={styles}
           />
           <FeatureCard
             icon="🌐"
             title="DeFi 就绪"
             description="交易预览、安全扫描、智能合约交互"
             gradient={["#059669", "#10B981"]}
+            colors={colors}
+            styles={styles}
           />
         </View>
 
@@ -90,6 +100,8 @@ interface FeatureCardProps {
   title: string;
   description: string;
   gradient: string[];
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({
@@ -97,6 +109,8 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   title,
   description,
   gradient,
+  colors,
+  styles,
 }) => {
   return (
     <View style={styles.featureCard}>
@@ -111,7 +125,8 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -204,4 +219,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.md,
   },
-});
+  });

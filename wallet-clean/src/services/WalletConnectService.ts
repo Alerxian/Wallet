@@ -1,11 +1,18 @@
 /**
  * WalletConnect 服务
- * 集成 WalletConnect v2 实现 dApp 连接
+ * 支持真实 WalletConnect v2 + 本地降级模式
  */
 
+import '@walletconnect/react-native-compat';
+import { Core } from '@walletconnect/core';
+import { Web3Wallet } from '@walletconnect/web3wallet';
+import { ethers } from 'ethers';
 import { ChainId } from '@/types/network.types';
+import { StorageService } from './StorageService';
+import { WalletService } from './WalletService';
+import { TransactionService } from './TransactionService';
+import { SecurityService } from './SecurityService';
 
-// WalletConnect 会话类型
 export interface WalletConnectSession {
   topic: string;
   pairingTopic?: string;
@@ -30,7 +37,6 @@ export interface WalletConnectSession {
   };
 }
 
-// 连接请求类型
 export interface ConnectionRequest {
   id: number;
   params: {
@@ -48,7 +54,6 @@ export interface ConnectionRequest {
   };
 }
 
-// 交易签名请求类型
 export interface SignRequest {
   id: number;
   topic: string;
@@ -59,271 +64,427 @@ export interface SignRequest {
     };
     chainId: string;
   };
+  verifyContext?: any;
+}
+
+interface WalletContext {
+  walletId: string;
+  address: string;
+  chainIds: ChainId[];
 }
 
 export class WalletConnectService {
-  private static client: any = null;
+  private static web3wallet: any = null;
+  private static core: any = null;
   private static sessions: Map<string, WalletConnectSession> = new Map();
+  private static pendingRequests: Map<number, SignRequest> = new Map();
   private static initialized = false;
+  private static localMode = false;
+  private static readonly STORAGE_KEY = 'walletconnect_sessions';
+  private static walletContext: WalletContext | null = null;
 
-  /**
-   * 初始化 WalletConnect
-   */
-  static async init(projectId: string): Promise<void> {
+  private static requestListeners: Array<() => void> = [];
+
+  static setWalletContext(context: WalletContext | null): void {
+    this.walletContext = context;
+  }
+
+  static isLocalMode(): boolean {
+    return this.localMode;
+  }
+
+  private static notifyRequestListeners(): void {
+    this.requestListeners.forEach((cb) => cb());
+  }
+
+  static subscribeRequests(listener: () => void): () => void {
+    this.requestListeners.push(listener);
+    return () => {
+      this.requestListeners = this.requestListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private static async loadSessionsFromStorage(): Promise<void> {
+    try {
+      const raw = await StorageService.getSecure(this.STORAGE_KEY);
+      if (!raw) return;
+      const items: WalletConnectSession[] = JSON.parse(raw);
+      this.sessions = new Map(items.map((s) => [s.topic, s]));
+    } catch (error) {
+      console.warn('加载 WalletConnect 会话缓存失败:', error);
+    }
+  }
+
+  private static async saveSessionsToStorage(): Promise<void> {
+    try {
+      const items = Array.from(this.sessions.values());
+      await StorageService.setSecure(this.STORAGE_KEY, JSON.stringify(items));
+    } catch (error) {
+      console.warn('保存 WalletConnect 会话缓存失败:', error);
+    }
+  }
+
+  static async init(projectId?: string): Promise<void> {
     if (this.initialized) return;
 
     try {
-      // TODO: 实际集成需要安装 @walletconnect/react-native-compat
-      // 和 @walletconnect/core
-      console.log('WalletConnect 初始化（需要安装 SDK）');
-
-      // 示例代码（需要实际 SDK）:
-      // const { Core } = await import('@walletconnect/core');
-      // const { Web3Wallet } = await import('@walletconnect/web3wallet');
-
-      // this.client = await Web3Wallet.init({
-      //   core: new Core({
-      //     projectId,
-      //   }),
-      //   metadata: {
-      //     name: 'Wallet App',
-      //     description: 'Secure Crypto Wallet',
-      //     url: 'https://wallet.app',
-      //     icons: ['https://wallet.app/icon.png'],
-      //   },
-      // });
-
-      // 设置事件监听器
-      // this.setupEventListeners();
-
-      this.initialized = true;
-    } catch (error) {
-      throw new Error(`WalletConnect 初始化失败: ${error}`);
-    }
-  }
-
-  /**
-   * 设置事件监听器
-   */
-  private static setupEventListeners(): void {
-    if (!this.client) return;
-
-    // 连接请求
-    this.client.on('session_proposal', async (proposal: ConnectionRequest) => {
-      console.log('收到连接请求:', proposal);
-      // 触发 UI 显示连接请求
-    });
-
-    // 签名请求
-    this.client.on('session_request', async (request: SignRequest) => {
-      console.log('收到签名请求:', request);
-      // 触发 UI 显示签名请求
-    });
-
-    // 会话删除
-    this.client.on('session_delete', ({ topic }: { topic: string }) => {
-      console.log('会话已删除:', topic);
-      this.sessions.delete(topic);
-    });
-  }
-
-  /**
-   * 通过 URI 连接 dApp
-   */
-  static async pair(uri: string): Promise<void> {
-    if (!this.client) {
-      throw new Error('WalletConnect 未初始化');
-    }
-
-    try {
-      // await this.client.core.pairing.pair({ uri });
-      console.log('配对请求已发送:', uri);
-    } catch (error) {
-      throw new Error(`配对失败: ${error}`);
-    }
-  }
-
-  /**
-   * 批准连接请求
-   */
-  static async approveSession(
-    proposal: ConnectionRequest,
-    accounts: string[],
-    chainIds: ChainId[]
-  ): Promise<WalletConnectSession> {
-    if (!this.client) {
-      throw new Error('WalletConnect 未初始化');
-    }
-
-    try {
-      // 构建命名空间
-      const namespaces: Record<string, any> = {};
-
-      // EIP155 (Ethereum) 命名空间
-      if (proposal.params.requiredNamespaces.eip155) {
-        namespaces.eip155 = {
-          accounts: accounts.flatMap(account =>
-            chainIds.map(chainId => `eip155:${chainId}:${account}`)
-          ),
-          methods: [
-            'eth_sendTransaction',
-            'eth_signTransaction',
-            'eth_sign',
-            'personal_sign',
-            'eth_signTypedData',
-            'eth_signTypedData_v4',
-          ],
-          events: ['chainChanged', 'accountsChanged'],
-        };
+      if (!projectId) {
+        this.localMode = true;
+        this.initialized = true;
+        await this.loadSessionsFromStorage();
+        console.log('WalletConnect 以本地模式运行（未配置 Project ID）');
+        return;
       }
 
-      // const session = await this.client.approveSession({
-      //   id: proposal.id,
-      //   namespaces,
-      // });
+      this.core = new Core({
+        projectId,
+      });
 
-      // this.sessions.set(session.topic, session);
-      // return session;
+      this.web3wallet = await Web3Wallet.init({
+        core: this.core,
+        metadata: {
+          name: 'Wallet Clean',
+          description: 'Wallet Clean mobile wallet',
+          url: 'https://wallet-clean.local',
+          icons: ['https://walletconnect.com/walletconnect-logo.png'],
+        },
+      });
 
-      // 临时返回模拟数据
-      const mockSession: WalletConnectSession = {
-        topic: 'mock-topic',
-        relay: { protocol: 'irn' },
-        expiry: Date.now() + 7 * 24 * 60 * 60 * 1000,
-        acknowledged: true,
-        controller: accounts[0],
-        namespaces,
-        requiredNamespaces: proposal.params.requiredNamespaces,
-        peer: proposal.params.proposer,
+      this.setupEventListeners();
+      const activeSessions = this.web3wallet.getActiveSessions?.() || {};
+      this.sessions = new Map(
+        Object.values(activeSessions).map((s: any) => [s.topic, s as WalletConnectSession])
+      );
+
+      this.initialized = true;
+      this.localMode = false;
+      await this.saveSessionsToStorage();
+    } catch (error) {
+      console.error('WalletConnect SDK 初始化失败，回退本地模式:', error);
+      this.localMode = true;
+      this.initialized = true;
+      await this.loadSessionsFromStorage();
+    }
+  }
+
+  private static ensureInitialized(): void {
+    if (!this.initialized) {
+      throw new Error('WalletConnect 未初始化');
+    }
+  }
+
+  private static buildNamespaces(requiredNamespaces: Record<string, any>): Record<string, any> {
+    if (!this.walletContext) {
+      throw new Error('钱包上下文未设置，无法批准连接');
+    }
+
+    const { address, chainIds } = this.walletContext;
+    const namespaces: Record<string, any> = {};
+
+    if (requiredNamespaces.eip155) {
+      namespaces.eip155 = {
+        accounts: chainIds.map((chainId) => `eip155:${chainId}:${address}`),
+        methods: [
+          'eth_sendTransaction',
+          'eth_signTransaction',
+          'eth_sign',
+          'personal_sign',
+          'eth_signTypedData',
+          'eth_signTypedData_v4',
+        ],
+        events: ['chainChanged', 'accountsChanged'],
+      };
+    }
+
+    return namespaces;
+  }
+
+  private static setupEventListeners(): void {
+    if (!this.web3wallet) return;
+
+    this.web3wallet.on('session_proposal', async (proposal: ConnectionRequest) => {
+      try {
+        const proposerUrl = proposal.params.proposer?.metadata?.url || '';
+        const urlRisk = SecurityService.assessUrl(proposerUrl);
+        if (urlRisk.level === 'high') {
+          throw new Error('dApp 域名风险过高，已拒绝连接');
+        }
+
+        const namespaces = this.buildNamespaces(proposal.params.requiredNamespaces);
+        const session = await this.web3wallet.approveSession({
+          id: proposal.id,
+          namespaces,
+        });
+
+        this.sessions.set(session.topic, session as WalletConnectSession);
+        await this.saveSessionsToStorage();
+      } catch (error: any) {
+        await this.web3wallet.rejectSession({
+          id: proposal.id,
+          reason: {
+            code: 5000,
+            message: error?.message || '用户拒绝',
+          },
+        });
+      }
+    });
+
+    this.web3wallet.on('session_request', async (event: any) => {
+      const request: SignRequest = {
+        id: event.id,
+        topic: event.topic,
+        params: event.params,
+        verifyContext: event.verifyContext,
       };
 
-      this.sessions.set(mockSession.topic, mockSession);
-      return mockSession;
-    } catch (error) {
-      throw new Error(`批准会话失败: ${error}`);
-    }
-  }
+      this.pendingRequests.set(request.id, request);
+      this.notifyRequestListeners();
+    });
 
-  /**
-   * 拒绝连接请求
-   */
-  static async rejectSession(proposalId: number, reason: string): Promise<void> {
-    if (!this.client) {
-      throw new Error('WalletConnect 未初始化');
-    }
-
-    try {
-      // await this.client.rejectSession({
-      //   id: proposalId,
-      //   reason: {
-      //     code: 5000,
-      //     message: reason,
-      //   },
-      // });
-      console.log('已拒绝连接请求:', proposalId, reason);
-    } catch (error) {
-      throw new Error(`拒绝会话失败: ${error}`);
-    }
-  }
-
-  /**
-   * 批准签名请求
-   */
-  static async approveRequest(
-    requestId: number,
-    topic: string,
-    result: any
-  ): Promise<void> {
-    if (!this.client) {
-      throw new Error('WalletConnect 未初始化');
-    }
-
-    try {
-      // await this.client.respondSessionRequest({
-      //   topic,
-      //   response: {
-      //     id: requestId,
-      //     jsonrpc: '2.0',
-      //     result,
-      //   },
-      // });
-      console.log('已批准签名请求:', requestId, result);
-    } catch (error) {
-      throw new Error(`批准请求失败: ${error}`);
-    }
-  }
-
-  /**
-   * 拒绝签名请求
-   */
-  static async rejectRequest(
-    requestId: number,
-    topic: string,
-    error: string
-  ): Promise<void> {
-    if (!this.client) {
-      throw new Error('WalletConnect 未初始化');
-    }
-
-    try {
-      // await this.client.respondSessionRequest({
-      //   topic,
-      //   response: {
-      //     id: requestId,
-      //     jsonrpc: '2.0',
-      //     error: {
-      //       code: 5000,
-      //       message: error,
-      //     },
-      //   },
-      // });
-      console.log('已拒绝签名请求:', requestId, error);
-    } catch (error: any) {
-      throw new Error(`拒绝请求失败: ${error}`);
-    }
-  }
-
-  /**
-   * 断开会话
-   */
-  static async disconnectSession(topic: string): Promise<void> {
-    if (!this.client) {
-      throw new Error('WalletConnect 未初始化');
-    }
-
-    try {
-      // await this.client.disconnectSession({
-      //   topic,
-      //   reason: {
-      //     code: 6000,
-      //     message: '用户断开连接',
-      //   },
-      // });
-
+    this.web3wallet.on('session_delete', async ({ topic }: { topic: string }) => {
       this.sessions.delete(topic);
-      console.log('已断开会话:', topic);
-    } catch (error) {
-      throw new Error(`断开会话失败: ${error}`);
+      await this.saveSessionsToStorage();
+    });
+
+    this.web3wallet.on('session_expire', async ({ topic }: { topic: string }) => {
+      this.sessions.delete(topic);
+      await this.saveSessionsToStorage();
+    });
+  }
+
+  static async pair(uri: string): Promise<void> {
+    this.ensureInitialized();
+    const parsed = this.parseUri(uri);
+    if (!parsed || !parsed.symKey) {
+      throw new Error('无效的 WalletConnect URI');
+    }
+
+    if (this.localMode || !this.web3wallet) {
+      const session = this.createLocalSessionFromUri(uri);
+      this.sessions.set(session.topic, session);
+      await this.saveSessionsToStorage();
+      return;
+    }
+
+    await this.core.pairing.pair({ uri });
+  }
+
+  private static createLocalSessionFromUri(uri: string): WalletConnectSession {
+    const parsed = this.parseUri(uri);
+    if (!parsed) {
+      throw new Error('WalletConnect URI 格式无效');
+    }
+
+    const name = `WalletConnect #${parsed.topic.slice(0, 6)}`;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    return {
+      topic: parsed.topic,
+      relay: { protocol: parsed.relay.protocol || 'irn' },
+      expiry: nowSeconds + 7 * 24 * 60 * 60,
+      acknowledged: true,
+      controller: 'local-wallet',
+      namespaces: {},
+      requiredNamespaces: {},
+      peer: {
+        publicKey: parsed.topic,
+        metadata: {
+          name,
+          description: '本地模式会话（仅用于联调）',
+          url: 'https://walletconnect.com',
+          icons: ['https://walletconnect.com/walletconnect-logo.png'],
+        },
+      },
+    };
+  }
+
+  static async disconnectSession(topic: string): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.localMode && this.web3wallet) {
+      await this.web3wallet.disconnectSession({
+        topic,
+        reason: {
+          code: 6000,
+          message: '用户断开连接',
+        },
+      });
+    }
+
+    this.sessions.delete(topic);
+    await this.saveSessionsToStorage();
+  }
+
+  static async disconnectAllSessions(): Promise<void> {
+    this.ensureInitialized();
+    const topics = Array.from(this.sessions.keys());
+    for (const topic of topics) {
+      await this.disconnectSession(topic);
     }
   }
 
-  /**
-   * 获取所有活跃会话
-   */
-  static getActiveSessions(): WalletConnectSession[] {
+  static async getActiveSessions(): Promise<WalletConnectSession[]> {
+    this.ensureInitialized();
+
+    if (!this.localMode && this.web3wallet) {
+      const activeSessions = this.web3wallet.getActiveSessions?.() || {};
+      this.sessions = new Map(
+        Object.values(activeSessions).map((s: any) => [s.topic, s as WalletConnectSession])
+      );
+      await this.saveSessionsToStorage();
+    }
+
     return Array.from(this.sessions.values());
   }
 
-  /**
-   * 获取指定会话
-   */
   static getSession(topic: string): WalletConnectSession | undefined {
     return this.sessions.get(topic);
   }
 
-  /**
-   * 解析 WalletConnect URI
-   */
+  static getPendingRequests(): SignRequest[] {
+    return Array.from(this.pendingRequests.values());
+  }
+
+  private static parseChainId(chainIdRaw: string | undefined): ChainId {
+    if (!chainIdRaw) return ChainId.ETHEREUM;
+    const n = Number(chainIdRaw.split(':')[1] || chainIdRaw);
+    return n as ChainId;
+  }
+
+  private static async handlePersonalSign(request: SignRequest): Promise<string> {
+    if (!this.walletContext) {
+      throw new Error('钱包上下文未设置');
+    }
+
+    const [first, second] = request.params.request.params;
+    const messageHex = typeof first === 'string' && first.startsWith('0x') ? first : second;
+    const messageBytes = ethers.getBytes(messageHex || '0x');
+
+    const privateKey = await WalletService.getWalletPrivateKey(this.walletContext.walletId);
+    const wallet = new ethers.Wallet(ethers.hexlify(privateKey));
+    return wallet.signMessage(messageBytes);
+  }
+
+  private static async handleEthSign(request: SignRequest): Promise<string> {
+    if (!this.walletContext) {
+      throw new Error('钱包上下文未设置');
+    }
+
+    const [, message] = request.params.request.params;
+    const privateKey = await WalletService.getWalletPrivateKey(this.walletContext.walletId);
+    const wallet = new ethers.Wallet(ethers.hexlify(privateKey));
+    const messageBytes = ethers.getBytes(message || '0x');
+    return wallet.signMessage(messageBytes);
+  }
+
+  private static async handleTypedDataSign(request: SignRequest): Promise<string> {
+    if (!this.walletContext) {
+      throw new Error('钱包上下文未设置');
+    }
+
+    const raw = request.params.request.params[1] || request.params.request.params[0];
+    const typedData = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+    const privateKey = await WalletService.getWalletPrivateKey(this.walletContext.walletId);
+    const wallet = new ethers.Wallet(ethers.hexlify(privateKey));
+
+    const { domain, types, message } = typedData;
+    const sanitizedTypes = { ...types };
+    delete sanitizedTypes.EIP712Domain;
+
+    return wallet.signTypedData(domain || {}, sanitizedTypes || {}, message || {});
+  }
+
+  private static async handleSendTransaction(request: SignRequest): Promise<string> {
+    if (!this.walletContext) {
+      throw new Error('钱包上下文未设置');
+    }
+
+    const tx = request.params.request.params[0] || {};
+    const chainId = this.parseChainId(request.params.chainId);
+
+    return TransactionService.sendTransaction(
+      {
+        from: tx.from || this.walletContext.address,
+        to: tx.to,
+        value: tx.value ? BigInt(tx.value).toString() : '0',
+        data: tx.data,
+      },
+      this.walletContext.walletId,
+      chainId
+    );
+  }
+
+  static async approveRequest(requestId: number): Promise<void> {
+    this.ensureInitialized();
+    if (this.localMode || !this.web3wallet) {
+      this.pendingRequests.delete(requestId);
+      this.notifyRequestListeners();
+      return;
+    }
+
+    const req = this.pendingRequests.get(requestId);
+    if (!req) {
+      throw new Error('请求不存在或已处理');
+    }
+
+    const method = req.params.request.method;
+    let result: any;
+
+    if (method === 'eth_sendTransaction') {
+      result = await this.handleSendTransaction(req);
+    } else if (method === 'personal_sign') {
+      result = await this.handlePersonalSign(req);
+    } else if (method === 'eth_sign') {
+      result = await this.handleEthSign(req);
+    } else if (method === 'eth_signTypedData' || method === 'eth_signTypedData_v4') {
+      result = await this.handleTypedDataSign(req);
+    } else {
+      throw new Error(`暂不支持方法: ${method}`);
+    }
+
+    await this.web3wallet.respondSessionRequest({
+      topic: req.topic,
+      response: {
+        id: req.id,
+        jsonrpc: '2.0',
+        result,
+      },
+    });
+
+    this.pendingRequests.delete(requestId);
+    this.notifyRequestListeners();
+  }
+
+  static async rejectRequest(requestId: number, message = '用户拒绝'): Promise<void> {
+    this.ensureInitialized();
+    if (this.localMode || !this.web3wallet) {
+      this.pendingRequests.delete(requestId);
+      this.notifyRequestListeners();
+      return;
+    }
+
+    const req = this.pendingRequests.get(requestId);
+    if (!req) {
+      throw new Error('请求不存在或已处理');
+    }
+
+    await this.web3wallet.respondSessionRequest({
+      topic: req.topic,
+      response: {
+        id: req.id,
+        jsonrpc: '2.0',
+        error: {
+          code: 5000,
+          message,
+        },
+      },
+    });
+
+    this.pendingRequests.delete(requestId);
+    this.notifyRequestListeners();
+  }
+
   static parseUri(uri: string): {
     protocol: string;
     version: number;
@@ -332,7 +493,6 @@ export class WalletConnectService {
     relay: { protocol: string; data?: string };
   } | null {
     try {
-      // wc:topic@version?relay-protocol=relay&symKey=key
       const match = uri.match(/^wc:([^@]+)@(\d+)\?(.+)$/);
       if (!match) return null;
 
@@ -341,7 +501,7 @@ export class WalletConnectService {
 
       return {
         protocol: 'wc',
-        version: parseInt(version),
+        version: parseInt(version, 10),
         topic,
         symKey: params.get('symKey') || '',
         relay: {
@@ -355,22 +515,7 @@ export class WalletConnectService {
     }
   }
 
-  /**
-   * 格式化 dApp 信息
-   */
-  static formatDAppInfo(metadata: {
-    name: string;
-    description: string;
-    url: string;
-    icons: string[];
-  }): string {
-    return `${metadata.name}\n${metadata.url}`;
-  }
-
-  /**
-   * 检查会话是否过期
-   */
   static isSessionExpired(session: WalletConnectSession): boolean {
-    return Date.now() > session.expiry;
+    return Date.now() > session.expiry * 1000;
   }
 }

@@ -10,7 +10,7 @@ import { Transaction, TransactionStatus, TransactionType } from '@/types/transac
 // Etherscan API 端点
 const ETHERSCAN_ENDPOINTS: Record<ChainId, string> = {
   [ChainId.ETHEREUM]: 'https://api.etherscan.io/api',
-  [ChainId.GOERLI]: 'https://api-goerli.etherscan.io/api',
+  [ChainId.SEPOLIA]: 'https://api-sepolia.etherscan.io/api',
   [ChainId.BSC]: 'https://api.bscscan.com/api',
   [ChainId.POLYGON]: 'https://api.polygonscan.com/api',
   [ChainId.ARBITRUM]: 'https://api.arbiscan.io/api',

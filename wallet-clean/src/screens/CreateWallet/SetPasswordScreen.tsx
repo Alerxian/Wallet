@@ -14,11 +14,12 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { Button } from "@components/common/Button";
 import { Card } from "@components/common/Card";
 import { useWalletStore } from "@store/walletStore";
 import type { AuthScreenNavigationProp } from "@/types/navigation.types";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface SetPasswordScreenProps {
   navigation: AuthScreenNavigationProp<"SetPassword">;
@@ -29,6 +30,9 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { mnemonic } = route.params;
   const [loading, setLoading] = useState(false);
   const { createWallet } = useWalletStore();
@@ -87,7 +91,8 @@ export const SetPasswordScreen: React.FC<SetPasswordScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -125,4 +130,4 @@ const styles = StyleSheet.create({
   createButton: {
     marginTop: spacing.lg,
   },
-});
+  });

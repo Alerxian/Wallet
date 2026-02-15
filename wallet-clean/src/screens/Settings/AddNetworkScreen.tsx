@@ -12,7 +12,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { Input } from "@components/common/Input";
 import { Button } from "@components/common/Button";
 import { useNetworkStore } from "@store/networkStore";
@@ -21,6 +22,7 @@ import { Network } from "@/types/network.types";
 export const AddNetworkScreen: React.FC = () => {
   const navigation = useNavigation();
   const { addCustomNetwork } = useNetworkStore();
+  const { theme: colors } = useTheme();
 
   const [chainId, setChainId] = useState("");
   const [name, setName] = useState("");
@@ -28,6 +30,8 @@ export const AddNetworkScreen: React.FC = () => {
   const [rpcUrl, setRpcUrl] = useState("");
   const [explorerUrl, setExplorerUrl] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const styles = createStyles(colors);
 
   const validateInputs = (): boolean => {
     if (!chainId || !name || !symbol || !rpcUrl) {
@@ -148,7 +152,7 @@ export const AddNetworkScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

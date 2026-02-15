@@ -4,49 +4,42 @@
  */
 
 export const colors = {
-  // 主色调
-  primary: '#1E3A8A',        // 深蓝色（主按钮、强调）
-  secondary: '#1E40AF',      // 中蓝色（次要按钮）
-  accent: '#60A5FA',         // 天蓝色（高亮、链接）
-  warning: '#F59E0B',        // 警告（橙色）
+  primary: '#00A3FF',
+  secondary: '#0EA5E9',
+  accent: '#F59E0B',
+  warning: '#FBBF24',
 
-  // 背景色
-  background: '#0A0A0A',     // 深黑色（主背景）
-  surface: '#1A1A1A',        // 深灰色（卡片背景）
-  surfaceLight: '#2A2A2A',   // 浅灰色（输入框背景）
+  background: '#090C12',
+  surface: '#121826',
+  surfaceLight: '#1B2435',
 
-  // 边框与分割线
-  border: '#333333',         // 边框颜色
-  divider: '#2A2A2A',        // 分割线
+  border: '#2A364D',
+  divider: '#1F2A3E',
 
-  // 文字颜色
   text: {
-    primary: '#FFFFFF',      // 主文字（白色）
-    secondary: '#A0A0A0',    // 次要文字（灰色）
-    disabled: '#666666',     // 禁用文字
-    inverse: '#000000',      // 反色文字（用于浅色背景）
+    primary: '#F8FAFC',
+    secondary: '#9FB2C9',
+    disabled: '#5E738D',
+    inverse: '#04070D',
   },
 
-  // 状态颜色
   status: {
-    success: '#10B981',      // 成功（绿色）
-    warning: '#F59E0B',      // 警告（橙色）
-    error: '#EF4444',        // 错误（红色）
-    info: '#60A5FA',         // 信息（蓝色）
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#38BDF8',
   },
 
-  // 渐变色
   gradient: {
-    primary: ['#1E3A8A', '#1E40AF', '#3B82F6'],     // 主渐变
-    secondary: ['#60A5FA', '#3B82F6', '#2563EB'],   // 次渐变
-    dark: ['#0A0A0A', '#1A1A1A'],                   // 暗色渐变
+    primary: ['#0066FF', '#00A3FF', '#22D3EE'],
+    secondary: ['#FB923C', '#F59E0B', '#FACC15'],
+    dark: ['#090C12', '#121826', '#1B2435'],
   },
 
-  // 透明度变体
   overlay: {
-    light: 'rgba(255, 255, 255, 0.1)',   // 浅色遮罩
-    medium: 'rgba(0, 0, 0, 0.5)',        // 中等遮罩
-    dark: 'rgba(0, 0, 0, 0.8)',          // 深色遮罩
+    light: 'rgba(148, 163, 184, 0.14)',
+    medium: 'rgba(7, 10, 16, 0.55)',
+    dark: 'rgba(2, 4, 8, 0.84)',
   },
 } as const;
 

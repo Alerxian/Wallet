@@ -4,12 +4,11 @@
  */
 
 import { ethers } from 'ethers';
-import * as secp from '@noble/secp256k1';
-import { keccak_256 } from '@noble/hashes/sha3';
 import { ChainId } from '@/types/network.types';
 import {
   TransactionParams,
   Transaction,
+  TransactionType,
   TransactionStatus,
   GasEstimate,
 } from '@/types/transaction.types';
@@ -58,9 +57,8 @@ export class TransactionService {
    */
   private static async buildTransaction(
     params: TransactionParams,
-    walletId: string,
     chainId: ChainId = ChainId.ETHEREUM
-  ): Promise<ethers.Transaction> {
+  ): Promise<ethers.TransactionRequest> {
     try {
       // 获取 nonce
       const nonce =
@@ -91,17 +89,17 @@ export class TransactionService {
       }
 
       // 构建交易对象
-      const tx = ethers.Transaction.from({
+      const tx: ethers.TransactionRequest = {
         to: params.to,
-        value: params.value,
+        value: BigInt(params.value ?? '0'),
         data: params.data || '0x',
         nonce,
-        gasLimit,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
+        gasLimit: BigInt(gasLimit),
+        maxFeePerGas: BigInt(maxFeePerGas || '0'),
+        maxPriorityFeePerGas: BigInt(maxPriorityFeePerGas || '0'),
         chainId,
         type: 2, // EIP-1559
-      });
+      };
 
       return tx;
     } catch (error) {
@@ -113,31 +111,17 @@ export class TransactionService {
    * 签名交易
    */
   private static async signTransaction(
-    tx: ethers.Transaction,
+    tx: ethers.TransactionRequest,
     walletId: string
   ): Promise<string> {
     try {
       // 获取私钥
       const privateKey = await WalletService.getWalletPrivateKey(walletId);
+      const privateKeyHex =
+        '0x' + Array.from(privateKey).map((b) => b.toString(16).padStart(2, '0')).join('');
+      const signer = new ethers.Wallet(privateKeyHex);
 
-      // 获取交易的签名哈希
-      const txHash = keccak_256(tx.unsignedSerialized);
-
-      // 使用 secp256k1 签名
-      const signature = await secp.signAsync(txHash, privateKey);
-
-      // 计算 v 值
-      const v = signature.recovery! + 27 + (tx.chainId * 2 + 8);
-
-      // 设置签名
-      tx.signature = ethers.Signature.from({
-        r: '0x' + Buffer.from(signature.r).toString('hex'),
-        s: '0x' + Buffer.from(signature.s).toString('hex'),
-        v,
-      });
-
-      // 返回签名后的交易
-      return tx.serialized;
+      return await signer.signTransaction(tx);
     } catch (error) {
       throw new Error(`签名交易失败: ${error}`);
     }
@@ -153,7 +137,7 @@ export class TransactionService {
   ): Promise<string> {
     try {
       // 构建交易
-      const tx = await this.buildTransaction(params, walletId, chainId);
+      const tx = await this.buildTransaction(params, chainId);
 
       // 签名交易
       const signedTx = await this.signTransaction(tx, walletId);
@@ -166,13 +150,12 @@ export class TransactionService {
         hash: txHash,
         from: params.from,
         to: params.to,
-        value: params.value,
-        type: params.to === params.from ? 'receive' : 'send',
+        value: params.value ?? '0',
+        type: params.to === params.from ? TransactionType.RECEIVE : TransactionType.SEND,
         status: TransactionStatus.PENDING,
         timestamp: Date.now(),
         gasPrice: params.maxFeePerGas,
-        gasLimit: params.gasLimit,
-      } as any);
+      });
 
       return txHash;
     } catch (error) {

@@ -1,9 +1,9 @@
 /**
- * 主页面 - 参考 Rabby Wallet 设计
- * 显示钱包余额、资产列表、快捷操作
+ * 全新首页
+ * Portfolio-first 信息架构 + 更强视觉层级
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,24 +12,26 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import type { MainScreenNavigationProp } from "@/types/navigation.types";
-import { colors, typography, spacing } from "@/theme";
-import { Card } from "@components/common/Card";
-import { Button } from "@components/common/Button";
-import { AddressDisplay } from "@components/wallet/AddressDisplay";
-import { useWalletStore } from "@store/walletStore";
-import { useNetworkStore } from "@store/networkStore";
-import { useTokenStore } from "@store/tokenStore";
-import { formatBalance } from "@utils/format";
-import { TokenService } from "@/services/TokenService";
-import { PriceService } from "@/services/PriceService";
-import { ChainId } from "@/types/network.types";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { MainScreenNavigationProp } from '@/types/navigation.types';
+import { typography, spacing, ThemeColors } from '@/theme';
+import { useTheme } from '@/theme/ThemeContext';
+import { Card } from '@components/common/Card';
+import { Atmosphere } from '@components/common/Atmosphere';
+import { AddressDisplay } from '@components/wallet/AddressDisplay';
+import { useWalletStore } from '@store/walletStore';
+import { useNetworkStore } from '@store/networkStore';
+import { useTokenStore } from '@store/tokenStore';
+import { TokenService } from '@/services/TokenService';
+import { PriceService } from '@/services/PriceService';
 
 export const HomeScreen: React.FC = () => {
-  const navigation = useNavigation<MainScreenNavigationProp<"Home">>();
+  const navigation = useNavigation<MainScreenNavigationProp<'Home'>>();
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { currentWallet, loadWallets } = useWalletStore();
   const { currentNetwork, init: initNetwork } = useNetworkStore();
   const {
@@ -44,67 +46,52 @@ export const HomeScreen: React.FC = () => {
   } = useTokenStore();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [balance, setBalance] = useState("0");
-  const [balanceFormatted, setBalanceFormatted] = useState("0.00");
-  const [loading, setLoading] = useState(false);
+  const [nativeBalanceFormatted, setNativeBalanceFormatted] = useState('0.00');
   const [nativePrice, setNativePrice] = useState(0);
   const [nativePriceChange, setNativePriceChange] = useState(0);
-  const [totalValue, setTotalValue] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  // 加载余额和代币
+  const visibleTokens = useMemo(
+    () => tokens.filter((t) => !hiddenTokens.includes(t.address.toLowerCase())),
+    [tokens, hiddenTokens]
+  );
+
+  const totalValue = useMemo(() => {
+    const nativeValue = PriceService.calculateValue(nativeBalanceFormatted, nativePrice);
+    const tokenValue = visibleTokens.reduce((sum, token) => {
+      const tokenBalance = balances[token.address.toLowerCase()];
+      const tokenPrice = prices[token.symbol];
+      if (!tokenBalance || !tokenPrice) return sum;
+      return sum + PriceService.calculateValue(tokenBalance.balanceFormatted, tokenPrice);
+    }, 0);
+    return nativeValue + tokenValue;
+  }, [nativeBalanceFormatted, nativePrice, visibleTokens, balances, prices]);
+
   const loadData = useCallback(async () => {
     if (!currentWallet) return;
 
     try {
       setLoading(true);
 
-      // 加载原生代币余额
-      const nativeBalance = await TokenService.getNativeBalance(
-        currentWallet.address,
-        currentNetwork.chainId as any
-      );
-      setBalance(nativeBalance.balance || "0");
-      setBalanceFormatted(nativeBalance.balanceFormatted || "0.00");
+      const [nativeBalance, nativeTokenPrice] = await Promise.all([
+        TokenService.getNativeBalance(currentWallet.address, currentNetwork.chainId as any),
+        PriceService.getPrice(currentNetwork.symbol),
+      ]);
 
-      // 加载原生代币价格
-      const price = await PriceService.getPrice(currentNetwork.symbol);
-      if (price) {
-        setNativePrice(price.usd);
-        setNativePriceChange(price.usd_24h_change);
-      }
+      setNativeBalanceFormatted(nativeBalance.balanceFormatted || '0.00');
+      setNativePrice(nativeTokenPrice?.usd || 0);
+      setNativePriceChange(nativeTokenPrice?.usd_24h_change || 0);
 
-      // 加载代币列表
       await loadTokens(currentNetwork.chainId as any);
       await loadBalances(currentWallet.address, currentNetwork.chainId as any);
-
-      // 加载代币价格
-      const tokenSymbols = tokens.map(t => t.symbol);
-      await loadPrices([currentNetwork.symbol, ...tokenSymbols]);
-
-      // 计算总价值
-      let total = price
-        ? PriceService.calculateValue(nativeBalance.balanceFormatted || "0", price.usd)
-        : 0;
-
-      tokens.forEach(token => {
-        const tokenBalance = balances[token.address.toLowerCase()];
-        const tokenPrice = prices[token.symbol];
-        if (tokenBalance && tokenPrice) {
-          total += PriceService.calculateValue(
-            tokenBalance.balanceFormatted,
-            tokenPrice
-          );
-        }
-      });
-
-      setTotalValue(total);
+      await loadPrices(tokens.map((t) => t.symbol));
     } catch (error) {
-      console.error("加载数据失败:", error);
-      Alert.alert("错误", "加载数据失败，请检查网络连接");
+      console.error('加载数据失败:', error);
+      Alert.alert('错误', '加载资产失败，请稍后重试');
     } finally {
       setLoading(false);
     }
-  }, [currentWallet, currentNetwork, tokens, balances, prices]);
+  }, [currentWallet, currentNetwork, tokens]);
 
   useEffect(() => {
     loadWallets();
@@ -125,463 +112,297 @@ export const HomeScreen: React.FC = () => {
     setRefreshing(false);
   };
 
+  const quickActions = [
+    { label: '接收', icon: '↓', route: 'Receive' as const },
+    { label: '发送', icon: '↑', route: 'Send' as const },
+    { label: '兑换', icon: '⇄', route: 'Swap' as const },
+    { label: '资产', icon: '◉', route: 'Tokens' as const },
+    { label: 'dApp', icon: '⧉', route: 'DAppConnections' as const },
+    { label: '设置', icon: '⚙', route: 'Settings' as const },
+  ];
+
   if (!currentWallet) {
     return (
       <SafeAreaView style={styles.container}>
+        <Atmosphere />
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>暂无钱包</Text>
-          <Text style={styles.emptySubtext}>请先创建或导入钱包</Text>
+          <Text style={styles.emptyTitle}>没有可用钱包</Text>
+          <Text style={styles.emptySubtext}>请先创建或导入钱包，然后回来查看资产总览。</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // 过滤隐藏的代币
-  const visibleTokens = tokens.filter(
-    t => !hiddenTokens.includes(t.address.toLowerCase())
-  );
-
   return (
     <SafeAreaView style={styles.container}>
+      <Atmosphere />
+
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* 钱包信息卡片 */}
-        <Card style={styles.walletCard}>
-          <View style={styles.walletHeader}>
-            <Text style={styles.walletName}>{currentWallet.name}</Text>
-            <TouchableOpacity
-              style={styles.networkBadge}
-              onPress={() => navigation.navigate("Networks")}
-            >
+        <Card style={styles.heroCard}>
+          <View style={styles.heroTopRow}>
+            <View>
+              <Text style={styles.overline}>Portfolio</Text>
+              <Text style={styles.walletName}>{currentWallet.name}</Text>
+            </View>
+            <TouchableOpacity style={styles.networkPill} onPress={() => navigation.navigate('Networks')}>
               <View style={styles.networkDot} />
               <Text style={styles.networkText}>{currentNetwork.name}</Text>
             </TouchableOpacity>
           </View>
 
-          <AddressDisplay
-            address={currentWallet.address}
-          />
+          <AddressDisplay address={currentWallet.address} />
 
-          {/* 余额显示 */}
-          <View style={styles.balanceContainer}>
-            <Text style={styles.balanceLabel}>总资产</Text>
-            <Text style={styles.balanceAmount}>
-              ${loading ? "0.00" : totalValue.toFixed(2)}
+          <View style={styles.totalWrap}>
+            <Text style={styles.totalLabel}>总资产估值</Text>
+            <Text style={styles.totalValue}>${loading ? '0.00' : totalValue.toFixed(2)}</Text>
+            <Text
+              style={[
+                styles.changeText,
+                { color: PriceService.getPriceChangeColor(nativePriceChange) },
+              ]}
+            >
+              {nativePriceChange ? `今日 ${PriceService.formatPriceChange(nativePriceChange)}` : '今日 --'}
             </Text>
-            {nativePriceChange !== 0 && (
-              <Text
-                style={[
-                  styles.priceChange,
-                  { color: PriceService.getPriceChangeColor(nativePriceChange) },
-                ]}
-              >
-                {PriceService.formatPriceChange(nativePriceChange)}
-              </Text>
-            )}
-          </View>
-
-          {/* 快捷操作 */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate("Receive")}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: colors.status.success }]}>
-                <Text style={styles.actionIconText}>↓</Text>
-              </View>
-              <Text style={styles.actionText}>接收</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate("Send", {})}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: colors.primary }]}>
-                <Text style={styles.actionIconText}>↑</Text>
-              </View>
-              <Text style={styles.actionText}>发送</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate("Swap")}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: colors.accent }]}>
-                <Text style={styles.actionIconText}>⇄</Text>
-              </View>
-              <Text style={styles.actionText}>兑换</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate("NFTList")}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: colors.secondary }]}>
-                <Text style={styles.actionIconText}>🖼</Text>
-              </View>
-              <Text style={styles.actionText}>NFT</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate("DeFi")}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: colors.warning }]}>
-                <Text style={styles.actionIconText}>💰</Text>
-              </View>
-              <Text style={styles.actionText}>DeFi</Text>
-            </TouchableOpacity>
           </View>
         </Card>
 
-        {/* 资产列表 */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>资产</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Tokens")}>
-              <Text style={styles.sectionLink}>管理</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>快速操作</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('GlobalSearch')}>
+            <Text style={styles.link}>搜索</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.actionGrid}>
+          {quickActions.map((action) => (
+            <TouchableOpacity
+              key={action.label}
+              style={styles.actionItem}
+              onPress={() => navigation.navigate(action.route as any, action.route === 'Send' ? {} : undefined)}
+            >
+              <Text style={styles.actionIcon}>{action.icon}</Text>
+              <Text style={styles.actionLabel}>{action.label}</Text>
             </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>资产概览</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Tokens')}>
+            <Text style={styles.link}>全部资产</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Card style={styles.assetCard}>
+          <View style={styles.assetRow}>
+            <View style={styles.assetBadge}><Text style={styles.assetBadgeText}>{currentNetwork.symbol.slice(0, 1)}</Text></View>
+            <View style={styles.assetInfo}>
+              <Text style={styles.assetName}>{currentNetwork.symbol}</Text>
+              <Text style={styles.assetMeta}>主链资产</Text>
+            </View>
+            <View style={styles.assetRight}>
+              <Text style={styles.assetAmount}>{Number(nativeBalanceFormatted).toFixed(4)}</Text>
+              <Text style={styles.assetUsd}>${(Number(nativeBalanceFormatted) * nativePrice).toFixed(2)}</Text>
+            </View>
           </View>
 
-          {/* 原生代币 */}
-          <Card style={styles.assetCard}>
-            <View style={styles.assetItem}>
-              <View style={styles.assetIcon}>
-                <Text style={styles.assetIconText}>
-                  {currentNetwork.symbol.substring(0, 1)}
-                </Text>
-              </View>
-              <View style={styles.assetInfo}>
-                <Text style={styles.assetName}>{currentNetwork.name}</Text>
-                <Text style={styles.assetSymbol}>{currentNetwork.symbol}</Text>
-                {nativePrice > 0 && (
-                  <Text style={styles.assetPrice}>
-                    ${PriceService.formatPrice(nativePrice)}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.assetBalance}>
-                <Text style={styles.assetAmount}>
-                  {loading ? "..." : parseFloat(balanceFormatted).toFixed(4)}
-                </Text>
-                {nativePrice > 0 && (
-                  <Text style={styles.assetValue}>
-                    ${(parseFloat(balanceFormatted) * nativePrice).toFixed(2)}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {/* ERC-20 代币 */}
-            {visibleTokens.slice(0, 3).map(token => {
-              const tokenBalance = balances[token.address.toLowerCase()];
-              const tokenPrice = prices[token.symbol];
-              const value =
-                tokenBalance && tokenPrice
-                  ? parseFloat(tokenBalance.balanceFormatted) * tokenPrice
-                  : 0;
-
-              return (
-                <View key={token.address} style={styles.assetItem}>
-                  <View style={styles.assetIcon}>
-                    <Text style={styles.assetIconText}>
-                      {token.symbol.substring(0, 1)}
-                    </Text>
-                  </View>
-                  <View style={styles.assetInfo}>
-                    <Text style={styles.assetName}>{token.name}</Text>
-                    <Text style={styles.assetSymbol}>{token.symbol}</Text>
-                    {tokenPrice && (
-                      <Text style={styles.assetPrice}>
-                        ${PriceService.formatPrice(tokenPrice)}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.assetBalance}>
-                    <Text style={styles.assetAmount}>
-                      {tokenBalance ? tokenBalance.balanceFormatted : "0.00"}
-                    </Text>
-                    {value > 0 && (
-                      <Text style={styles.assetValue}>${value.toFixed(2)}</Text>
-                    )}
-                  </View>
+          {visibleTokens.slice(0, 4).map((token) => {
+            const balance = balances[token.address.toLowerCase()];
+            const price = prices[token.symbol] || 0;
+            const amount = Number(balance?.balanceFormatted || '0');
+            const usd = amount * price;
+            return (
+              <View key={token.address} style={styles.assetRow}>
+                <View style={styles.assetBadge}><Text style={styles.assetBadgeText}>{token.symbol.slice(0, 1)}</Text></View>
+                <View style={styles.assetInfo}>
+                  <Text style={styles.assetName}>{token.symbol}</Text>
+                  <Text style={styles.assetMeta}>{token.name}</Text>
                 </View>
-              );
-            })}
-          </Card>
-        </View>
-
-        {/* 最近交易 */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>最近交易</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("TransactionHistory")}>
-              <Text style={styles.sectionLink}>查看全部</Text>
-            </TouchableOpacity>
-          </View>
-          <Card style={styles.transactionCard}>
-            <View style={styles.emptyTransactions}>
-              <Text style={styles.emptyTransactionsText}>暂无交易记录</Text>
-            </View>
-          </Card>
-        </View>
-
-        {/* 更多功能 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>更多功能</Text>
-          <Card style={styles.moreCard}>
-            <TouchableOpacity
-              style={styles.moreItem}
-              onPress={() => navigation.navigate("Portfolio")}
-            >
-              <Text style={styles.moreIcon}>📊</Text>
-              <Text style={styles.moreText}>投资组合</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.moreItem}
-              onPress={() => navigation.navigate("DAppConnections")}
-            >
-              <Text style={styles.moreIcon}>🔗</Text>
-              <Text style={styles.moreText}>dApp 连接</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.moreItem}
-              onPress={() => navigation.navigate("HardwareWallet")}
-            >
-              <Text style={styles.moreIcon}>🔐</Text>
-              <Text style={styles.moreText}>硬件钱包</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.moreItem}
-              onPress={() => navigation.navigate("Settings")}
-            >
-              <Text style={styles.moreIcon}>⚙️</Text>
-              <Text style={styles.moreText}>设置</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-          </Card>
-        </View>
+                <View style={styles.assetRight}>
+                  <Text style={styles.assetAmount}>{amount.toFixed(4)}</Text>
+                  <Text style={styles.assetUsd}>${usd.toFixed(2)}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyText: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptySubtext: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  walletCard: {
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  walletHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  walletName: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  networkBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surfaceLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 12,
-  },
-  networkDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.status.success,
-    marginRight: spacing.xs,
-  },
-  networkText: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  address: {
-    marginBottom: spacing.lg,
-  },
-  balanceContainer: {
-    alignItems: "center",
-    marginBottom: spacing.lg,
-  },
-  balanceLabel: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  balanceAmount: {
-    ...typography.h1,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  balanceUsd: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  priceChange: {
-    ...typography.caption,
-    marginTop: spacing.xs,
-    fontWeight: "600",
-  },
-  actionsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  actionButton: {
-    alignItems: "center",
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: spacing.xs,
-  },
-  actionIconText: {
-    fontSize: 24,
-    color: colors.text.primary,
-  },
-  actionText: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  section: {
-    marginBottom: spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-  },
-  sectionLink: {
-    ...typography.caption,
-    color: colors.primary,
-  },
-  assetCard: {
-    padding: spacing.md,
-  },
-  assetItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  assetIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: spacing.md,
-  },
-  assetIconText: {
-    fontSize: 20,
-    color: colors.text.primary,
-  },
-  assetInfo: {
-    flex: 1,
-  },
-  assetName: {
-    ...typography.body,
-    color: colors.text.primary,
-    marginBottom: 2,
-  },
-  assetSymbol: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  assetPrice: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  assetBalance: {
-    alignItems: "flex-end",
-  },
-  assetAmount: {
-    ...typography.body,
-    color: colors.text.primary,
-    marginBottom: 2,
-  },
-  assetValue: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  transactionCard: {
-    padding: spacing.lg,
-  },
-  emptyTransactions: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-  },
-  emptyTransactionsText: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  moreCard: {
-    padding: spacing.md,
-  },
-  moreItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  moreIcon: {
-    fontSize: 24,
-    marginRight: spacing.md,
-  },
-  moreText: {
-    ...typography.body,
-    color: colors.text.primary,
-    flex: 1,
-  },
-  arrow: {
-    ...typography.h4,
-    color: colors.text.secondary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+    },
+    emptyTitle: {
+      ...typography.h2,
+      color: colors.text.primary,
+      marginBottom: spacing.sm,
+    },
+    emptySubtext: {
+      ...typography.body,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
+    heroCard: {
+      padding: spacing.lg,
+      marginBottom: spacing.lg,
+      backgroundColor: colors.surface,
+    },
+    heroTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.md,
+    },
+    overline: {
+      ...typography.overline,
+      color: colors.text.secondary,
+      marginBottom: 2,
+    },
+    walletName: {
+      ...typography.h3,
+      color: colors.text.primary,
+    },
+    networkPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 100,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      gap: spacing.xs,
+    },
+    networkDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+      backgroundColor: colors.primary,
+    },
+    networkText: {
+      ...typography.caption,
+      color: colors.text.secondary,
+    },
+    totalWrap: {
+      marginTop: spacing.md,
+    },
+    totalLabel: {
+      ...typography.caption,
+      color: colors.text.secondary,
+      marginBottom: 4,
+    },
+    totalValue: {
+      ...typography.h1,
+      color: colors.text.primary,
+    },
+    changeText: {
+      ...typography.captionMedium,
+      marginTop: 6,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.text.primary,
+    },
+    link: {
+      ...typography.captionMedium,
+      color: colors.primary,
+    },
+    actionGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginBottom: spacing.lg,
+      gap: spacing.sm,
+    },
+    actionItem: {
+      width: '31%',
+      minHeight: 90,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+    },
+    actionIcon: {
+      ...typography.h3,
+      color: colors.primary,
+    },
+    actionLabel: {
+      ...typography.captionMedium,
+      color: colors.text.primary,
+    },
+    assetCard: {
+      padding: spacing.md,
+    },
+    assetRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    assetBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: spacing.sm,
+    },
+    assetBadgeText: {
+      ...typography.captionMedium,
+      color: colors.text.primary,
+    },
+    assetInfo: {
+      flex: 1,
+    },
+    assetName: {
+      ...typography.bodyBold,
+      color: colors.text.primary,
+    },
+    assetMeta: {
+      ...typography.caption,
+      color: colors.text.secondary,
+    },
+    assetRight: {
+      alignItems: 'flex-end',
+    },
+    assetAmount: {
+      ...typography.bodyMedium,
+      color: colors.text.primary,
+    },
+    assetUsd: {
+      ...typography.caption,
+      color: colors.text.secondary,
+    },
+  });

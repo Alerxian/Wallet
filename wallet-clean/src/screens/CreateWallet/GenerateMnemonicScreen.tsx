@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { Button } from "@components/common/Button";
 import { Card } from "@components/common/Card";
 import { MnemonicGrid } from "@components/wallet/MnemonicGrid";
@@ -16,6 +16,7 @@ import {
 } from "@/types/wallet.types";
 import { useScreenProtection } from "@hooks/useScreenProtection";
 import type { AuthScreenNavigationProp } from "@/types/navigation.types";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface GenerateMnemonicScreenProps {
   navigation: AuthScreenNavigationProp<"GenerateMnemonic">;
@@ -26,6 +27,9 @@ export const GenerateMnemonicScreen: React.FC<GenerateMnemonicScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [mnemonic, setMnemonic] = useState<string>("");
   const [words, setWords] = useState<MnemonicWordType[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -128,7 +132,8 @@ export const GenerateMnemonicScreen: React.FC<GenerateMnemonicScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -190,4 +195,4 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-});
+  });

@@ -4,14 +4,15 @@
 
 import React from "react";
 import {
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
   TextStyle,
 } from "react-native";
-import { colors, typography, spacing, shadows } from "@/theme";
+import { typography, spacing, shadows } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface ButtonProps {
   title: string;
@@ -34,120 +35,126 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
+  const getVariantStyle = (): ViewStyle => {
+    switch (variant) {
+      case "primary":
+        return {
+          backgroundColor: colors.primary,
+          borderColor: colors.primary,
+        };
+      case "secondary":
+        return {
+          backgroundColor: colors.surfaceLight,
+          borderColor: colors.border,
+        };
+      case "outline":
+        return {
+          backgroundColor: "transparent",
+          borderWidth: 1,
+          borderColor: colors.primary,
+        };
+      case "text":
+        return { backgroundColor: "transparent" };
+    }
+  };
+
+  const getVariantTextStyle = (): TextStyle => {
+    switch (variant) {
+      case "outline":
+      case "text":
+        return { color: colors.primary };
+      case "secondary":
+        return { color: colors.text.primary };
+      default:
+        return { color: colors.text.inverse };
+    }
+  };
+
   const buttonStyle = [
     styles.base,
-    styles[variant],
+    getVariantStyle(),
     styles[`${size}Size`],
-    disabled && styles.disabled,
+    disabled && { opacity: 0.5 },
     style,
   ];
 
   const textStyles = [
     styles.text,
-    styles[`${variant}Text`],
+    getVariantTextStyle(),
     styles[`${size}Text`],
-    disabled && styles.disabledText,
     textStyle,
   ];
 
   return (
-    <TouchableOpacity
-      style={buttonStyle}
+    <Pressable
+      style={({ pressed }) => [
+        buttonStyle,
+        pressed && !disabled && !loading && styles.pressed,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "primary" ? colors.text.primary : colors.primary}
+          color={variant === "primary" || variant === "secondary" ? colors.text.inverse : colors.primary}
         />
       ) : (
         <Text style={textStyles}>{title}</Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    base: {
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      borderWidth: 1,
+      borderColor: "transparent",
+      ...shadows.small,
+    },
+    pressed: {
+      transform: [{ scale: 0.985 }],
+      opacity: 0.92,
+    },
 
-  // 变体样式
-  primary: {
-    backgroundColor: colors.primary,
-    ...shadows.primary,
-  },
-  secondary: {
-    backgroundColor: colors.secondary,
-    ...shadows.medium,
-  },
-  outline: {
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  text: {
-    backgroundColor: "transparent",
-  },
+    // 尺寸样式
+    smallSize: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      minHeight: 38,
+    },
+    mediumSize: {
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      minHeight: 50,
+    },
+    largeSize: {
+      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.xl,
+      minHeight: 58,
+    },
 
-  // 尺寸样式
-  smallSize: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    minHeight: 36,
-  },
-  mediumSize: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    minHeight: 48,
-  },
-  largeSize: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    minHeight: 56,
-  },
+    // 文字样式
+    text: {
+      ...typography.button,
+    },
 
-  // 禁用状态
-  disabled: {
-    backgroundColor: colors.surfaceLight,
-    opacity: 0.5,
-  },
-
-  // 文字样式
-  primaryText: {
-    color: colors.text.primary,
-    ...typography.button,
-  },
-  secondaryText: {
-    color: colors.text.primary,
-    ...typography.button,
-  },
-  outlineText: {
-    color: colors.primary,
-    ...typography.button,
-  },
-  textText: {
-    color: colors.primary,
-    ...typography.button,
-  },
-
-  // 文字尺寸
-  smallText: {
-    ...typography.buttonSmall,
-  },
-  mediumText: {
-    ...typography.button,
-  },
-  largeText: {
-    ...typography.button,
-    fontSize: 18,
-  },
-
-  disabledText: {
-    color: colors.text.disabled,
-  },
-});
+    // 文字尺寸
+    smallText: {
+      ...typography.buttonSmall,
+    },
+    mediumText: {
+      ...typography.button,
+    },
+    largeText: {
+      ...typography.button,
+      fontSize: 16,
+    },
+  });

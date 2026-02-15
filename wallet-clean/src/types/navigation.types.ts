@@ -39,8 +39,10 @@ export type MainStackParamList = {
   NFTDetail: { contract: string; tokenId: string };
   DeFi: undefined;
   DAppConnections: undefined;
+  DAppBrowser: undefined;
   Portfolio: undefined;
   HardwareWallet: undefined;
+  GlobalSearch: undefined;
 };
 
 /**

@@ -4,7 +4,8 @@
 
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
-import { colors, typography, spacing, shadows } from "@/theme";
+import { typography, spacing, shadows, ThemeColors } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface MnemonicWordProps {
   word: string;
@@ -25,6 +26,9 @@ export const MnemonicWord: React.FC<MnemonicWordProps> = ({
   style,
   showIndex = true,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const containerStyle = [
     styles.container,
     selected && styles.selected,
@@ -45,7 +49,8 @@ export const MnemonicWord: React.FC<MnemonicWordProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
@@ -76,4 +81,4 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     flex: 1,
   },
-});
+  });

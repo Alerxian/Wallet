@@ -17,10 +17,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { MainScreenNavigationProp } from '@/types/navigation.types';
-import { colors, typography, spacing } from '@/theme';
+import { typography, spacing, ThemeColors } from '@/theme';
 import { Card } from '@components/common/Card';
 import { useWalletStore } from '@store/walletStore';
 import { useNetworkStore } from '@store/networkStore';
+import { useTheme } from '@/theme/ThemeContext';
 import {
   DeFiService,
   DeFiProtocol,
@@ -30,6 +31,8 @@ import {
 
 export const DeFiScreen: React.FC = () => {
   const navigation = useNavigation<MainScreenNavigationProp<'DeFi'>>();
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
   const { currentWallet } = useWalletStore();
   const { currentNetwork } = useNetworkStore();
 
@@ -237,7 +240,8 @@ export const DeFiScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -349,4 +353,4 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
   },
-});
+  });

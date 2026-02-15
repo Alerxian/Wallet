@@ -9,6 +9,10 @@ import { shadows } from "./shadows";
 
 export { colors, typography, spacing, shadows };
 
+// 导出主题系统
+export * from './themes';
+export * from './ThemeContext';
+
 export const theme = {
   colors,
   typography,

@@ -16,7 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { MainScreenNavigationProp } from "@/types/navigation.types";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { Card } from "@components/common/Card";
 import { Button } from "@components/common/Button";
 import { useTokenStore } from "@store/tokenStore";
@@ -41,9 +42,12 @@ export const TokensScreen: React.FC = () => {
     hideToken,
     showToken,
   } = useTokenStore();
+  const { theme: colors } = useTheme();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
+
+  const styles = createStyles(colors);
 
   useEffect(() => {
     if (currentWallet) {
@@ -210,7 +214,7 @@ export const TokensScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

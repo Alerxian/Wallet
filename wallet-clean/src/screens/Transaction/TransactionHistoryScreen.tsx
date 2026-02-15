@@ -14,7 +14,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { Card } from "@components/common/Card";
 import { useWalletStore } from "@store/walletStore";
 import { EtherscanService } from "@/services/EtherscanService";
@@ -24,9 +25,12 @@ import { ethers } from "ethers";
 
 export const TransactionHistoryScreen: React.FC = () => {
   const { currentWallet } = useWalletStore();
+  const { theme: colors } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const styles = createStyles(colors);
 
   useEffect(() => {
     loadTransactions();
@@ -79,90 +83,128 @@ export const TransactionHistoryScreen: React.FC = () => {
     }
   };
 
+  const getTransactionIcon = (type: TransactionType) => {
+    switch (type) {
+      case TransactionType.SEND:
+        return "↑";
+      case TransactionType.RECEIVE:
+        return "↓";
+      case TransactionType.CONTRACT:
+        return "⚙";
+      case TransactionType.APPROVE:
+        return "⇄";
+      default:
+        return "•";
+    }
+  };
+
+  const getTransactionColor = (type: TransactionType) => {
+    switch (type) {
+      case TransactionType.SEND:
+        return colors.status.error;
+      case TransactionType.RECEIVE:
+        return colors.status.success;
+      case TransactionType.CONTRACT:
+        return colors.warning;
+      case TransactionType.APPROVE:
+        return colors.primary;
+      default:
+        return colors.text.secondary;
+    }
+  };
+
+  const getStatusColor = (status: TransactionStatus) => {
+    switch (status) {
+      case TransactionStatus.CONFIRMED:
+        return colors.status.success;
+      case TransactionStatus.PENDING:
+        return colors.warning;
+      case TransactionStatus.FAILED:
+        return colors.status.error;
+      default:
+        return colors.text.secondary;
+    }
+  };
+
+  const getStatusText = (status: TransactionStatus) => {
+    switch (status) {
+      case TransactionStatus.CONFIRMED:
+        return "已确认";
+      case TransactionStatus.PENDING:
+        return "待确认";
+      case TransactionStatus.FAILED:
+        return "失败";
+      default:
+        return "未知";
+    }
+  };
+
   const renderTransaction = ({ item }: { item: Transaction }) => {
-    const isReceive = item.type === TransactionType.RECEIVE;
+    const isOutgoing = item.type === TransactionType.SEND;
     const amount = ethers.formatEther(item.value);
-    const address = isReceive ? item.from : item.to;
+    const amountColor = isOutgoing ? colors.status.error : colors.status.success;
+    const amountPrefix = isOutgoing ? "-" : "+";
 
     return (
-      <TouchableOpacity style={styles.transactionItem}>
-        <View style={styles.transactionLeft}>
+      <TouchableOpacity
+        onPress={() => {
+          // TODO: 打开交易详情
+        }}
+      >
+        <Card style={styles.transactionCard}>
           <View
             style={[
               styles.transactionIcon,
-              {
-                backgroundColor: isReceive
-                  ? colors.status.success + "20"
-                  : colors.primary + "20",
-              },
+              { backgroundColor: getTransactionColor(item.type) + "20" },
             ]}
           >
             <Text
               style={[
                 styles.transactionIconText,
-                {
-                  color: isReceive ? colors.status.success : colors.primary,
-                },
+                { color: getTransactionColor(item.type) },
               ]}
             >
-              {isReceive ? "↓" : "↑"}
+              {getTransactionIcon(item.type)}
             </Text>
           </View>
+
           <View style={styles.transactionInfo}>
             <Text style={styles.transactionType}>
-              {isReceive ? "接收" : "发送"}
+              {item.type === TransactionType.SEND && "发送"}
+              {item.type === TransactionType.RECEIVE && "接收"}
+              {item.type === TransactionType.CONTRACT && "合约交互"}
+              {item.type === TransactionType.APPROVE && "授权"}
             </Text>
             <Text style={styles.transactionAddress} numberOfLines={1}>
-              {address.substring(0, 10)}...{address.substring(address.length - 8)}
+              {isOutgoing ? `到: ${item.to}` : `从: ${item.from}`}
             </Text>
-            <Text style={styles.transactionTime}>{formatDate(item.timestamp)}</Text>
+            <Text style={styles.transactionTime}>
+              {formatDate(item.timestamp)}
+            </Text>
           </View>
-        </View>
-        <View style={styles.transactionRight}>
-          <Text
-            style={[
-              styles.transactionAmount,
-              {
-                color: isReceive ? colors.status.success : colors.text.primary,
-              },
-            ]}
-          >
-            {isReceive ? "+" : "-"}{parseFloat(amount).toFixed(4)} ETH
-          </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor:
-                  item.status === TransactionStatus.CONFIRMED
-                    ? colors.status.success + "20"
-                    : item.status === TransactionStatus.PENDING
-                    ? colors.warning + "20"
-                    : colors.status.error + "20",
-              },
-            ]}
-          >
-            <Text
+
+          <View style={styles.transactionRight}>
+            <Text style={[styles.transactionAmount, { color: amountColor }]}>
+              {amountPrefix}
+              {amount} ETH
+            </Text>
+            <View
               style={[
-                styles.statusText,
-                {
-                  color:
-                    item.status === TransactionStatus.CONFIRMED
-                      ? colors.status.success
-                      : item.status === TransactionStatus.PENDING
-                      ? colors.warning
-                      : colors.status.error,
-                },
+                styles.statusBadge,
+                { backgroundColor: getStatusColor(item.status) + "20" },
               ]}
             >
-              {item.status === TransactionStatus.CONFIRMED
-                ? "已确认"
-                : item.status === TransactionStatus.PENDING
-                ? "待确认"
-                : "失败"}
-            </Text>
+              <Text
+                style={[
+                  styles.statusText,
+                  { color: getStatusColor(item.status) },
+                ]}
+              >
+                {getStatusText(item.status)}
+              </Text>
+            </View>
           </View>
-        </View>
+        </Card>
       </TouchableOpacity>
     );
   };
@@ -177,88 +219,54 @@ export const TransactionHistoryScreen: React.FC = () => {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {loading && transactions.length === 0 ? (
+  if (loading && transactions.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>加载交易历史...</Text>
+          <Text style={styles.loadingText}>加载中...</Text>
         </View>
-      ) : transactions.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>暂无交易记录</Text>
-          <Text style={styles.emptySubtext}>
-            发送或接收资产后，交易记录将显示在这里
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={transactions}
-          renderItem={renderTransaction}
-          keyExtractor={(item) => item.hash}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
-          }
-        />
-      )}
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={transactions}
+        renderItem={renderTransaction}
+        keyExtractor={(item) => item.hash}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>暂无交易记录</Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    marginTop: spacing.md,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.xl,
-  },
-  emptyText: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptySubtext: {
-    ...typography.body,
-    color: colors.text.secondary,
-    textAlign: "center",
-  },
-  list: {
+  listContent: {
     padding: spacing.md,
   },
-  transactionItem: {
+  transactionCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 12,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  transactionLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
+    marginBottom: spacing.md,
   },
   transactionIcon: {
     width: 40,
@@ -305,5 +313,25 @@ const styles = StyleSheet.create({
   statusText: {
     ...typography.caption,
     fontSize: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: spacing.xl * 2,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.text.secondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.text.secondary,
+    marginTop: spacing.md,
   },
 });

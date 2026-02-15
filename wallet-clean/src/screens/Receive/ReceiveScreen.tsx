@@ -1,34 +1,32 @@
 /**
- * 接收界面
- * 显示钱包地址和二维码，支持复制地址
+ * 接收界面（重设计）
  */
 
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Share,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import QRCode from "react-native-qrcode-svg";
-import * as Clipboard from "expo-clipboard";
-import { colors, typography, spacing } from "@/theme";
-import { Card } from "@components/common/Card";
-import { Button } from "@components/common/Button";
-import { useWalletStore } from "@store/walletStore";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Share } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import QRCode from 'react-native-qrcode-svg';
+import * as Clipboard from 'expo-clipboard';
+import { typography, spacing, ThemeColors } from '@/theme';
+import { useTheme } from '@/theme/ThemeContext';
+import { Card } from '@components/common/Card';
+import { Button } from '@components/common/Button';
+import { Atmosphere } from '@components/common/Atmosphere';
+import { useWalletStore } from '@store/walletStore';
 
 export const ReceiveScreen: React.FC = () => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
   const { currentWallet } = useWalletStore();
   const [copied, setCopied] = useState(false);
 
   if (!currentWallet) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>暂无钱包</Text>
+        <Atmosphere />
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>暂无钱包</Text>
+          <Text style={styles.emptyHint}>请先创建钱包后再接收资产</Text>
         </View>
       </SafeAreaView>
     );
@@ -38,188 +36,162 @@ export const ReceiveScreen: React.FC = () => {
     try {
       await Clipboard.setStringAsync(currentWallet.address);
       setCopied(true);
-      Alert.alert("成功", "地址已复制到剪贴板");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      Alert.alert("错误", "复制地址失败");
+      setTimeout(() => setCopied(false), 1600);
+      Alert.alert('已复制', '钱包地址已复制到剪贴板');
+    } catch {
+      Alert.alert('错误', '复制地址失败');
     }
   };
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `我的钱包地址：\n${currentWallet.address}`,
+        message: `${currentWallet.name}\n${currentWallet.address}`,
       });
-    } catch (error) {
-      console.error("分享失败:", error);
+    } catch {
+      Alert.alert('错误', '分享失败');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <Atmosphere />
+
       <View style={styles.content}>
-        {/* 标题 */}
-        <View style={styles.header}>
-          <Text style={styles.title}>接收</Text>
-          <Text style={styles.subtitle}>扫描二维码或复制地址以接收资产</Text>
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>接收资产</Text>
+          <Text style={styles.heroSubtitle}>向发送方展示二维码，或直接复制你的链上地址。</Text>
         </View>
 
-        {/* 二维码卡片 */}
         <Card style={styles.qrCard}>
-          <View style={styles.qrContainer}>
-            {currentWallet.address ? (
-              <QRCode
-                value={currentWallet.address}
-                size={240}
-                backgroundColor="#FFFFFF"
-                color="#000000"
-              />
-            ) : (
-              <Text>加载中...</Text>
-            )}
+          <View style={styles.qrFrame}>
+            <QRCode value={currentWallet.address} size={220} backgroundColor="#FFFFFF" color="#0F172A" />
           </View>
 
-          {/* 钱包名称 */}
           <Text style={styles.walletName}>{currentWallet.name}</Text>
 
-          {/* 地址显示 */}
-          <View style={styles.addressContainer}>
-            <Text style={styles.addressLabel}>钱包地址</Text>
-            <TouchableOpacity
-              style={styles.addressBox}
-              onPress={handleCopyAddress}
-              activeOpacity={0.7}
-            >
+          <View style={styles.addressBlock}>
+            <Text style={styles.label}>钱包地址</Text>
+            <TouchableOpacity onPress={handleCopyAddress} style={styles.addressBox} activeOpacity={0.85}>
               <Text style={styles.addressText} numberOfLines={1}>
                 {currentWallet.address}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* 操作按钮 */}
-          <View style={styles.actions}>
-            <Button
-              title={copied ? "已复制" : "复制地址"}
-              onPress={handleCopyAddress}
-              variant="primary"
-              style={styles.actionButton}
-            />
-            <Button
-              title="分享"
-              onPress={handleShare}
-              variant="secondary"
-              style={styles.actionButton}
-            />
+          <View style={styles.actionsRow}>
+            <Button title={copied ? '已复制' : '复制地址'} onPress={handleCopyAddress} style={styles.actionBtn} />
+            <Button title="分享" onPress={handleShare} variant="secondary" style={styles.actionBtn} />
           </View>
         </Card>
 
-        {/* 提示信息 */}
-        <Card style={styles.warningCard}>
-          <Text style={styles.warningTitle}>⚠️ 重要提示</Text>
-          <Text style={styles.warningText}>
-            • 仅发送 Ethereum 网络上的资产到此地址
-          </Text>
-          <Text style={styles.warningText}>
-            • 发送其他网络的资产可能导致永久丢失
-          </Text>
-          <Text style={styles.warningText}>
-            • 请确认发送方使用正确的网络
-          </Text>
+        <Card style={styles.tipCard}>
+          <Text style={styles.tipTitle}>安全提醒</Text>
+          <Text style={styles.tipLine}>- 只接收与当前网络匹配的资产</Text>
+          <Text style={styles.tipLine}>- 大额转入前建议先小额测试</Text>
+          <Text style={styles.tipLine}>- 链上交易不可逆，请谨慎核对</Text>
         </Card>
       </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.lg,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyText: {
-    ...typography.h3,
-    color: colors.text.secondary,
-  },
-  header: {
-    marginBottom: spacing.xl,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  qrCard: {
-    padding: spacing.xl,
-    alignItems: "center",
-    marginBottom: spacing.lg,
-  },
-  qrContainer: {
-    padding: spacing.lg,
-    backgroundColor: "white",
-    borderRadius: 16,
-    marginBottom: spacing.lg,
-  },
-  walletName: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.lg,
-  },
-  addressContainer: {
-    width: "100%",
-    marginBottom: spacing.lg,
-  },
-  addressLabel: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  addressBox: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  addressText: {
-    ...typography.body,
-    color: colors.text.primary,
-    fontFamily: "monospace",
-  },
-  actions: {
-    flexDirection: "row",
-    width: "100%",
-    gap: spacing.md,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  warningCard: {
-    padding: spacing.lg,
-    backgroundColor: colors.warning + "10",
-    borderColor: colors.warning + "30",
-    borderWidth: 1,
-  },
-  warningTitle: {
-    ...typography.bodyBold,
-    color: colors.warning,
-    marginBottom: spacing.sm,
-  },
-  warningText: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+      gap: spacing.md,
+    },
+    hero: {
+      marginTop: spacing.xs,
+    },
+    heroTitle: {
+      ...typography.h2,
+      color: colors.text.primary,
+      marginBottom: 2,
+    },
+    heroSubtitle: {
+      ...typography.body,
+      color: colors.text.secondary,
+    },
+    qrCard: {
+      alignItems: 'center',
+      padding: spacing.lg,
+    },
+    qrFrame: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    walletName: {
+      ...typography.h4,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    addressBlock: {
+      width: '100%',
+      marginBottom: spacing.md,
+    },
+    label: {
+      ...typography.caption,
+      color: colors.text.secondary,
+      marginBottom: 6,
+    },
+    addressBox: {
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    addressText: {
+      ...typography.body,
+      color: colors.text.primary,
+      fontFamily: 'monospace',
+    },
+    actionsRow: {
+      width: '100%',
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    actionBtn: {
+      flex: 1,
+    },
+    tipCard: {
+      backgroundColor: colors.warning + '12',
+      borderColor: colors.warning + '40',
+      borderWidth: 1,
+      padding: spacing.md,
+    },
+    tipTitle: {
+      ...typography.bodyBold,
+      color: colors.warning,
+      marginBottom: spacing.xs,
+    },
+    tipLine: {
+      ...typography.caption,
+      color: colors.text.secondary,
+      marginBottom: 4,
+    },
+    emptyWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      ...typography.h3,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    emptyHint: {
+      ...typography.body,
+      color: colors.text.secondary,
+    },
+  });

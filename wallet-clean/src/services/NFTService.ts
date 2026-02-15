@@ -14,7 +14,7 @@ const NETWORK_MAP: Record<ChainId, string> = {
   [ChainId.POLYGON]: 'polygon-mainnet',
   [ChainId.ARBITRUM]: 'arb-mainnet',
   [ChainId.OPTIMISM]: 'opt-mainnet',
-  [ChainId.GOERLI]: 'eth-goerli',
+  [ChainId.SEPOLIA]: 'eth-sepolia',
   [ChainId.BSC]: '', // Alchemy 不支持 BSC
   [ChainId.AVALANCHE]: '', // Alchemy 不支持 Avalanche
 };

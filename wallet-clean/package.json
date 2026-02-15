@@ -15,12 +15,14 @@
     "@noble/ciphers": "^2.1.1",
     "@noble/hashes": "^2.0.1",
     "@noble/secp256k1": "^3.0.0",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/native": "6.1.18",
     "@react-navigation/stack": "6.4.1",
     "@scure/bip32": "^2.0.1",
     "@scure/bip39": "^2.0.1",
     "@walletconnect/core": "^2.23.5",
     "@walletconnect/react-native-compat": "^2.23.5",
+    "@walletconnect/web3wallet": "^1.16.1",
     "axios": "^1.13.5",
     "date-fns": "4.1.0",
     "ethers": "^6.16.0",
@@ -43,6 +45,7 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-web": "0.21.2",
+    "react-native-worklets": "^0.7.3",
     "zustand": "5.0.11"
   },
   "devDependencies": {

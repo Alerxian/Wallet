@@ -6,13 +6,14 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { Button } from "@components/common/Button";
 import { Card } from "@components/common/Card";
 import { MnemonicGrid } from "@components/wallet/MnemonicGrid";
 import { shuffle } from "@utils/shuffle";
 import { MnemonicWord as MnemonicWordType } from "@/types/wallet.types";
 import type { AuthScreenNavigationProp } from "@/types/navigation.types";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface VerifyMnemonicScreenProps {
   navigation: AuthScreenNavigationProp<"VerifyMnemonic">;
@@ -23,6 +24,9 @@ export const VerifyMnemonicScreen: React.FC<VerifyMnemonicScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { mnemonic } = route.params;
 
   const [originalWords, setOriginalWords] = useState<MnemonicWordType[]>([]);
@@ -171,7 +175,8 @@ export const VerifyMnemonicScreen: React.FC<VerifyMnemonicScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -233,4 +238,4 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-});
+  });

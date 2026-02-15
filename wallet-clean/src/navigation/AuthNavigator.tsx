@@ -5,7 +5,7 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { AuthStackParamList } from "@/types/navigation.types";
-import { colors } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 // 导入页面
 import { WelcomeScreen } from "@screens/Auth/WelcomeScreen";
 import { GenerateMnemonicScreen } from "@screens/CreateWallet/GenerateMnemonicScreen";
@@ -17,6 +17,8 @@ import { ImportWalletScreen } from "@screens/ImportWallet/ImportWalletScreen";
 const Stack = createStackNavigator<AuthStackParamList>();
 
 export const AuthNavigator: React.FC = () => {
+  const { theme: colors } = useTheme();
+
   return (
     <Stack.Navigator
       screenOptions={{

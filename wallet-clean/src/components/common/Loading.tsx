@@ -4,7 +4,8 @@
 
 import React from "react";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface LoadingProps {
   text?: string;
@@ -12,6 +13,9 @@ interface LoadingProps {
 }
 
 export const Loading: React.FC<LoadingProps> = ({ text, size = "large" }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <ActivityIndicator size={size} color={colors.primary} />
@@ -20,7 +24,8 @@ export const Loading: React.FC<LoadingProps> = ({ text, size = "large" }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
@@ -32,4 +37,4 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: spacing.md,
   },
-});
+  });

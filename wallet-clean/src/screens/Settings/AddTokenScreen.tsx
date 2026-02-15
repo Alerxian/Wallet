@@ -13,7 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { Input } from "@components/common/Input";
 import { Button } from "@components/common/Button";
 import { Card } from "@components/common/Card";
@@ -26,11 +27,14 @@ export const AddTokenScreen: React.FC = () => {
   const navigation = useNavigation();
   const { addCustomToken } = useTokenStore();
   const { currentNetwork } = useNetworkStore();
+  const { theme: colors } = useTheme();
 
   const [contractAddress, setContractAddress] = useState("");
   const [tokenInfo, setTokenInfo] = useState<Token | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+
+  const styles = createStyles(colors);
 
   const handleSearchToken = async () => {
     if (!contractAddress) {
@@ -160,7 +164,7 @@ export const AddTokenScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

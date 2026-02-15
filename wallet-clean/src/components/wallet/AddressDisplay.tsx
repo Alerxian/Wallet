@@ -1,12 +1,12 @@
 /**
  * 地址展示组件
  */
-
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { formatAddress } from "@utils/format";
 import * as Clipboard from "expo-clipboard";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface AddressDisplayProps {
   address: string;
@@ -21,6 +21,8 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
   showCopy = true,
   showFull = false,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -49,36 +51,37 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: spacing.sm,
-  },
-  label: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  addressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  address: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-    flex: 1,
-    fontFamily: "monospace",
-  },
-  copyButton: {
-    marginLeft: spacing.sm,
-    padding: spacing.xs,
-  },
-  copyIcon: {
-    fontSize: 20,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      marginVertical: spacing.sm,
+    },
+    label: {
+      ...typography.caption,
+      color: colors.text.secondary,
+      marginBottom: spacing.xs,
+    },
+    addressContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surfaceLight,
+      borderRadius: 12,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    address: {
+      ...typography.bodyMedium,
+      color: colors.text.primary,
+      flex: 1,
+      fontFamily: "monospace",
+    },
+    copyButton: {
+      marginLeft: spacing.sm,
+      padding: spacing.xs,
+    },
+    copyIcon: {
+      fontSize: 20,
+    },
+  });

@@ -1,6 +1,5 @@
 /**
- * 设置界面
- * 应用设置和偏好管理
+ * 设置界面（重设计）
  */
 
 import React from 'react';
@@ -16,13 +15,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { MainScreenNavigationProp } from '@/types/navigation.types';
-import { colors, typography, spacing } from '@/theme';
+import { typography, spacing, ThemeColors } from '@/theme';
+import { useTheme } from '@/theme/ThemeContext';
 import { Card } from '@components/common/Card';
+import { Atmosphere } from '@components/common/Atmosphere';
 import { useSettingsStore } from '@store/settingsStore';
 import { BiometricService } from '@/services/BiometricService';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<MainScreenNavigationProp<'Settings'>>();
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
   const {
     theme,
     language,
@@ -38,301 +41,220 @@ export const SettingsScreen: React.FC = () => {
     setCurrency,
   } = useSettingsStore();
 
-  // 切换主题
   const handleThemeChange = () => {
-    Alert.alert(
-      '选择主题',
-      '',
-      [
-        {
-          text: '浅色',
-          onPress: () => setTheme('light'),
-        },
-        {
-          text: '深色',
-          onPress: () => setTheme('dark'),
-        },
-        {
-          text: '跟随系统',
-          onPress: () => setTheme('auto'),
-        },
-        { text: '取消', style: 'cancel' },
-      ]
-    );
+    Alert.alert('选择主题', '切换应用视觉风格', [
+      { text: 'Ocean Light', onPress: () => setTheme('light') },
+      { text: 'Ink Night', onPress: () => setTheme('dark') },
+      { text: '跟随系统', onPress: () => setTheme('auto') },
+      { text: '取消', style: 'cancel' },
+    ]);
   };
 
-  // 切换语言
   const handleLanguageChange = () => {
-    Alert.alert(
-      '选择语言',
-      '',
-      [
-        {
-          text: '中文',
-          onPress: () => setLanguage('zh'),
-        },
-        {
-          text: 'English',
-          onPress: () => setLanguage('en'),
-        },
-        { text: '取消', style: 'cancel' },
-      ]
-    );
+    Alert.alert('选择语言', '', [
+      { text: '中文', onPress: () => setLanguage('zh') },
+      { text: 'English', onPress: () => setLanguage('en') },
+      { text: '取消', style: 'cancel' },
+    ]);
   };
 
-  // 切换生物识别
   const handleBiometricToggle = async (value: boolean) => {
     if (value) {
-      // 检查是否支持
       const isAvailable = await BiometricService.isAvailable();
       if (!isAvailable) {
         Alert.alert('提示', '设备不支持生物识别');
         return;
       }
 
-      // 验证生物识别
       const success = await BiometricService.authenticate('启用生物识别');
-      if (success) {
-        await setBiometricEnabled(true);
-      } else {
-        Alert.alert('错误', '验证失败');
+      if (!success) {
+        Alert.alert('错误', '生物识别验证失败');
+        return;
       }
-    } else {
-      await setBiometricEnabled(false);
     }
+
+    await setBiometricEnabled(value);
   };
 
-  // 设置自动锁定时间
   const handleAutoLockChange = () => {
-    Alert.alert(
-      '自动锁定时间',
-      '',
-      [
-        { text: '1 分钟', onPress: () => setAutoLockMinutes(1) },
-        { text: '5 分钟', onPress: () => setAutoLockMinutes(5) },
-        { text: '15 分钟', onPress: () => setAutoLockMinutes(15) },
-        { text: '30 分钟', onPress: () => setAutoLockMinutes(30) },
-        { text: '从不', onPress: () => setAutoLockMinutes(0) },
-        { text: '取消', style: 'cancel' },
-      ]
-    );
+    Alert.alert('自动锁定时间', '', [
+      { text: '1 分钟', onPress: () => setAutoLockMinutes(1) },
+      { text: '5 分钟', onPress: () => setAutoLockMinutes(5) },
+      { text: '15 分钟', onPress: () => setAutoLockMinutes(15) },
+      { text: '30 分钟', onPress: () => setAutoLockMinutes(30) },
+      { text: '从不', onPress: () => setAutoLockMinutes(0) },
+      { text: '取消', style: 'cancel' },
+    ]);
   };
 
-  // 设置货币
   const handleCurrencyChange = () => {
-    Alert.alert(
-      '选择货币',
-      '',
-      [
-        { text: 'USD', onPress: () => setCurrency('USD') },
-        { text: 'CNY', onPress: () => setCurrency('CNY') },
-        { text: 'EUR', onPress: () => setCurrency('EUR') },
-        { text: 'GBP', onPress: () => setCurrency('GBP') },
-        { text: '取消', style: 'cancel' },
-      ]
-    );
+    Alert.alert('计价货币', '', [
+      { text: 'USD', onPress: () => setCurrency('USD') },
+      { text: 'CNY', onPress: () => setCurrency('CNY') },
+      { text: 'EUR', onPress: () => setCurrency('EUR') },
+      { text: 'GBP', onPress: () => setCurrency('GBP') },
+      { text: '取消', style: 'cancel' },
+    ]);
   };
 
-  const getThemeLabel = () => {
-    switch (theme) {
-      case 'light':
-        return '浅色';
-      case 'dark':
-        return '深色';
-      case 'auto':
-        return '跟随系统';
-    }
-  };
-
-  const getLanguageLabel = () => {
-    return language === 'zh' ? '中文' : 'English';
-  };
-
-  const getAutoLockLabel = () => {
-    if (autoLockMinutes === 0) return '从不';
-    return `${autoLockMinutes} 分钟`;
-  };
+  const themeLabel = theme === 'light' ? 'Ocean Light' : theme === 'dark' ? 'Ink Night' : '跟随系统';
+  const languageLabel = language === 'zh' ? '中文' : 'English';
+  const autoLockLabel = autoLockMinutes === 0 ? '从不' : `${autoLockMinutes} 分钟`;
 
   return (
     <SafeAreaView style={styles.container}>
+      <Atmosphere />
       <ScrollView contentContainerStyle={styles.content}>
-        {/* 外观 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>外观</Text>
-          <Card style={styles.card}>
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={handleThemeChange}
-            >
-              <Text style={styles.settingLabel}>主题</Text>
-              <View style={styles.settingValue}>
-                <Text style={styles.settingValueText}>{getThemeLabel()}</Text>
-                <Text style={styles.arrow}>›</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={handleLanguageChange}
-            >
-              <Text style={styles.settingLabel}>语言</Text>
-              <View style={styles.settingValue}>
-                <Text style={styles.settingValueText}>{getLanguageLabel()}</Text>
-                <Text style={styles.arrow}>›</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={handleCurrencyChange}
-            >
-              <Text style={styles.settingLabel}>货币</Text>
-              <View style={styles.settingValue}>
-                <Text style={styles.settingValueText}>{currency}</Text>
-                <Text style={styles.arrow}>›</Text>
-              </View>
-            </TouchableOpacity>
-          </Card>
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>偏好与安全</Text>
+          <Text style={styles.heroSubtitle}>定制视觉、连接和安全策略，让钱包更像你的工作台。</Text>
         </View>
 
-        {/* 安全 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>安全</Text>
-          <Card style={styles.card}>
-            <View style={styles.settingItem}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>外观与地区</Text>
+        </View>
+        <Card style={styles.card}>
+          <SettingCell label="主题" value={themeLabel} onPress={handleThemeChange} styles={styles} />
+          <SettingCell label="语言" value={languageLabel} onPress={handleLanguageChange} styles={styles} />
+          <SettingCell label="货币" value={currency} onPress={handleCurrencyChange} styles={styles} noDivider />
+        </Card>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>账户安全</Text>
+        </View>
+        <Card style={styles.card}>
+          <View style={styles.settingItem}>
+            <View>
               <Text style={styles.settingLabel}>生物识别</Text>
-              <Switch
-                value={biometricEnabled}
-                onValueChange={handleBiometricToggle}
-                trackColor={{
-                  false: colors.surfaceLight,
-                  true: colors.primary,
-                }}
-                thumbColor={colors.text.primary}
-              />
+              <Text style={styles.settingHint}>打开后关键操作需系统级认证</Text>
             </View>
+            <Switch
+              value={biometricEnabled}
+              onValueChange={handleBiometricToggle}
+              trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+              thumbColor={colors.text.inverse}
+            />
+          </View>
+          <SettingCell label="自动锁定" value={autoLockLabel} onPress={handleAutoLockChange} styles={styles} noDivider />
+        </Card>
 
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={handleAutoLockChange}
-            >
-              <Text style={styles.settingLabel}>自动锁定</Text>
-              <View style={styles.settingValue}>
-                <Text style={styles.settingValueText}>{getAutoLockLabel()}</Text>
-                <Text style={styles.arrow}>›</Text>
-              </View>
-            </TouchableOpacity>
-          </Card>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>资产与网络</Text>
         </View>
+        <Card style={styles.card}>
+          <SettingCell label="网络管理" value="链与 RPC" onPress={() => navigation.navigate('Networks')} styles={styles} />
+          <SettingCell label="代币管理" value="隐藏与自定义" onPress={() => navigation.navigate('Tokens')} styles={styles} />
+          <SettingCell label="dApp 连接" value="会话与权限" onPress={() => navigation.navigate('DAppConnections')} styles={styles} noDivider />
+        </Card>
 
-        {/* 通知 */}
-        <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>通知</Text>
-          <Card style={styles.card}>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>启用通知</Text>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-                trackColor={{
-                  false: colors.surfaceLight,
-                  true: colors.primary,
-                }}
-                thumbColor={colors.text.primary}
-              />
+        </View>
+        <Card style={styles.card}>
+          <View style={styles.settingItemNoDivider}>
+            <View>
+              <Text style={styles.settingLabel}>交易通知</Text>
+              <Text style={styles.settingHint}>交易状态、连接事件与安全提醒</Text>
             </View>
-          </Card>
-        </View>
-
-        {/* 网络和代币 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>管理</Text>
-          <Card style={styles.card}>
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => navigation.navigate('Networks')}
-            >
-              <Text style={styles.settingLabel}>网络管理</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => navigation.navigate('Tokens')}
-            >
-              <Text style={styles.settingLabel}>代币管理</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => navigation.navigate('DAppConnections')}
-            >
-              <Text style={styles.settingLabel}>dApp 连接</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-          </Card>
-        </View>
-
-        {/* 关于 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>关于</Text>
-          <Card style={styles.card}>
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>版本</Text>
-              <Text style={styles.settingValueText}>1.0.0</Text>
-            </View>
-          </Card>
-        </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+              thumbColor={colors.text.inverse}
+            />
+          </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
-  },
-  card: {
-    padding: 0,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  settingLabel: {
-    ...typography.body,
-    color: colors.text.primary,
-  },
-  settingValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  settingValueText: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  arrow: {
-    ...typography.h4,
-    color: colors.text.secondary,
-  },
-});
+interface SettingCellProps {
+  label: string;
+  value: string;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+  noDivider?: boolean;
+}
+
+const SettingCell: React.FC<SettingCellProps> = ({ label, value, onPress, styles, noDivider }) => (
+  <TouchableOpacity style={[styles.settingItem, noDivider && styles.settingItemNoDivider]} onPress={onPress}>
+    <Text style={styles.settingLabel}>{label}</Text>
+    <View style={styles.rowRight}>
+      <Text style={styles.settingValue}>{value}</Text>
+      <Text style={styles.arrow}>›</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    hero: {
+      marginBottom: spacing.lg,
+      marginTop: spacing.xs,
+    },
+    heroTitle: {
+      ...typography.h2,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    heroSubtitle: {
+      ...typography.body,
+      color: colors.text.secondary,
+    },
+    sectionHeader: {
+      marginBottom: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    sectionTitle: {
+      ...typography.overline,
+      color: colors.text.secondary,
+    },
+    card: {
+      padding: 0,
+      marginBottom: spacing.md,
+    },
+    settingItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    settingItemNoDivider: {
+      borderBottomWidth: 0,
+    },
+    settingLabel: {
+      ...typography.bodyBold,
+      color: colors.text.primary,
+    },
+    settingHint: {
+      ...typography.caption,
+      color: colors.text.secondary,
+      marginTop: 2,
+      maxWidth: 240,
+    },
+    rowRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    settingValue: {
+      ...typography.captionMedium,
+      color: colors.text.secondary,
+    },
+    arrow: {
+      ...typography.h4,
+      color: colors.text.secondary,
+    },
+  });

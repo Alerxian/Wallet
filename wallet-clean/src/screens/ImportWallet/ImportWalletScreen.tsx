@@ -15,13 +15,14 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
 import { Button } from "@components/common/Button";
 import { Input } from "@components/common/Input";
 import { Card } from "@components/common/Card";
 import { useWalletStore } from "@store/walletStore";
 import { isValidMnemonic, isValidPrivateKey } from "@utils/validation";
 import type { AuthScreenNavigationProp } from "@/types/navigation.types";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface ImportWalletScreenProps {
   navigation: AuthScreenNavigationProp<"ImportWallet">;
@@ -32,6 +33,9 @@ type ImportType = "mnemonic" | "privateKey";
 export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   navigation,
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [importType, setImportType] = useState<ImportType>("mnemonic");
   const [walletName, setWalletName] = useState("");
   const [mnemonic, setMnemonic] = useState("");
@@ -227,7 +231,8 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -293,4 +298,4 @@ const styles = StyleSheet.create({
   importButton: {
     marginTop: spacing.lg,
   },
-});
+  });

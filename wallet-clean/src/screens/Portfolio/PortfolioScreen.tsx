@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart, PieChart } from 'react-native-chart-kit';
-import { colors, typography, spacing } from '@/theme';
+import { typography, spacing, ThemeColors } from '@/theme';
 import { Card } from '@components/common/Card';
 import { useWalletStore } from '@store/walletStore';
 import { useNetworkStore } from '@store/networkStore';
@@ -27,10 +27,13 @@ import {
   ProfitData,
 } from '@/services/PortfolioService';
 import { PriceService } from '@/services/PriceService';
+import { useTheme } from '@/theme/ThemeContext';
 
 const screenWidth = Dimensions.get('window').width;
 
 export const PortfolioScreen: React.FC = () => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
   const { currentWallet } = useWalletStore();
   const { currentNetwork } = useNetworkStore();
   const { tokens } = useTokenStore();
@@ -285,7 +288,8 @@ export const PortfolioScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -417,4 +421,4 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text.primary,
   },
-});
+  });

@@ -12,7 +12,8 @@ import {
   ViewStyle,
   TextInputProps,
 } from "react-native";
-import { colors, typography, spacing } from "@/theme";
+import { typography, spacing, ThemeColors } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -34,6 +35,8 @@ export const Input: React.FC<InputProps> = ({
   secureTextEntry,
   ...textInputProps
 }) => {
+  const { theme: colors } = useTheme();
+  const styles = createStyles(colors);
   const [isFocused, setIsFocused] = useState(false);
   const [isSecure, setIsSecure] = useState(secureTextEntry);
 
@@ -79,7 +82,8 @@ export const Input: React.FC<InputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     marginBottom: spacing.md,
   },
@@ -92,11 +96,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    minHeight: 52,
+    minHeight: 54,
   },
   inputContainerFocused: {
     borderColor: colors.primary,
@@ -109,7 +113,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.body,
     color: colors.text.primary,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
   },
   leftIcon: {
     marginRight: spacing.sm,
@@ -130,4 +134,4 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: spacing.xs,
   },
-});
+  });

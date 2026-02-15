@@ -3,9 +3,12 @@
  */
 
 import React from "react";
-import { createStackNavigator } from "@react-navigation/stack";
+import {
+  createStackNavigator,
+  TransitionPresets,
+} from "@react-navigation/stack";
 import { MainStackParamList } from "@/types/navigation.types";
-import { colors } from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { HomeScreen } from "@screens/Home/HomeScreen";
 import { ReceiveScreen } from "@screens/Receive/ReceiveScreen";
 import { SendScreen } from "@screens/Send/SendScreen";
@@ -20,29 +23,35 @@ import { NFTListScreen } from "@screens/NFT/NFTListScreen";
 import { NFTDetailScreen } from "@screens/NFT/NFTDetailScreen";
 import { DeFiScreen } from "@screens/DeFi/DeFiScreen";
 import { DAppConnectionsScreen } from "@screens/DApp/DAppConnectionsScreen";
+import { DAppBrowserScreen } from "@screens/DApp/DAppBrowserScreen";
 import { PortfolioScreen } from "@screens/Portfolio/PortfolioScreen";
 import { HardwareWalletScreen } from "@screens/HardwareWallet/HardwareWalletScreen";
+import { GlobalSearchScreen } from "@screens/Search/GlobalSearchScreen";
 
 const Stack = createStackNavigator<MainStackParamList>();
 
 export const MainNavigator: React.FC = () => {
+  const { theme: colors } = useTheme();
+
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: colors.surface,
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 1,
-          borderBottomColor: colors.border,
+          borderBottomColor: colors.divider,
         },
         headerTintColor: colors.text.primary,
         headerTitleStyle: {
-          fontWeight: "600",
+          fontWeight: "700",
+          letterSpacing: 0.2,
         },
         cardStyle: {
           backgroundColor: colors.background,
         },
+        headerBackTitleVisible: false,
       }}
     >
       <Stack.Screen
@@ -53,12 +62,12 @@ export const MainNavigator: React.FC = () => {
       <Stack.Screen
         name="Receive"
         component={ReceiveScreen}
-        options={{ title: "接收" }}
+        options={{ title: "接收", ...TransitionPresets.SlideFromRightIOS }}
       />
       <Stack.Screen
         name="Send"
         component={SendScreen}
-        options={{ title: "发送" }}
+        options={{ title: "发送", ...TransitionPresets.SlideFromRightIOS }}
       />
       <Stack.Screen
         name="TransactionHistory"
@@ -116,6 +125,11 @@ export const MainNavigator: React.FC = () => {
         options={{ title: "dApp 连接" }}
       />
       <Stack.Screen
+        name="DAppBrowser"
+        component={DAppBrowserScreen}
+        options={{ title: "dApp 浏览器" }}
+      />
+      <Stack.Screen
         name="Portfolio"
         component={PortfolioScreen}
         options={{ title: "投资组合" }}
@@ -124,6 +138,11 @@ export const MainNavigator: React.FC = () => {
         name="HardwareWallet"
         component={HardwareWalletScreen}
         options={{ title: "硬件钱包" }}
+      />
+      <Stack.Screen
+        name="GlobalSearch"
+        component={GlobalSearchScreen}
+        options={{ title: "全局搜索" }}
       />
     </Stack.Navigator>
   );

@@ -78,7 +78,7 @@ const DEFAULT_TOKENS: Record<ChainId, Token[]> = {
   [ChainId.ARBITRUM]: [],
   [ChainId.OPTIMISM]: [],
   [ChainId.AVALANCHE]: [],
-  [ChainId.GOERLI]: [],
+  [ChainId.SEPOLIA]: [],
 };
 
 export const useTokenStore = create<TokenState>((set, get) => ({
