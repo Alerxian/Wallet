@@ -8,6 +8,7 @@ export const colors = {
   primary: '#1E3A8A',        // 深蓝色（主按钮、强调）
   secondary: '#1E40AF',      // 中蓝色（次要按钮）
   accent: '#60A5FA',         // 天蓝色（高亮、链接）
+  warning: '#F59E0B',        // 警告（橙色）
 
   // 背景色
   background: '#0A0A0A',     // 深黑色（主背景）

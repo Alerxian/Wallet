@@ -2,7 +2,7 @@
  * 输入框组件
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   TextInput,
@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   ViewStyle,
   TextInputProps,
-} from 'react-native';
-import { colors, typography, spacing } from '@theme';
+} from "react-native";
+import { colors, typography, spacing } from "@/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -64,7 +64,7 @@ export const Input: React.FC<InputProps> = ({
             style={styles.rightIcon}
             onPress={() => setIsSecure(!isSecure)}
           >
-            <Text style={styles.eyeIcon}>{isSecure ? '👁️' : '👁️‍🗨️'}</Text>
+            <Text style={styles.eyeIcon}>{isSecure ? "👁️" : "👁️‍🗨️"}</Text>
           </TouchableOpacity>
         )}
 
@@ -89,8 +89,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surfaceLight,
     borderRadius: 12,
     borderWidth: 1.5,

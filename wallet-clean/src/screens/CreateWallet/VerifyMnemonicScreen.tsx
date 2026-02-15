@@ -3,25 +3,19 @@
  * 用户需要按正确顺序点击打乱的助记词
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
-import { colors, typography, spacing } from '@theme';
-import { Button } from '@components/common/Button';
-import { Card } from '@components/common/Card';
-import { MnemonicGrid } from '@components/wallet/MnemonicGrid';
-import { shuffle } from '@utils/shuffle';
-import { MnemonicWord as MnemonicWordType } from '@types/wallet.types';
-import type { AuthScreenNavigationProp } from '@types/navigation.types';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, typography, spacing } from "@/theme";
+import { Button } from "@components/common/Button";
+import { Card } from "@components/common/Card";
+import { MnemonicGrid } from "@components/wallet/MnemonicGrid";
+import { shuffle } from "@utils/shuffle";
+import { MnemonicWord as MnemonicWordType } from "@/types/wallet.types";
+import type { AuthScreenNavigationProp } from "@/types/navigation.types";
 
 interface VerifyMnemonicScreenProps {
-  navigation: AuthScreenNavigationProp<'VerifyMnemonic'>;
+  navigation: AuthScreenNavigationProp<"VerifyMnemonic">;
   route: { params: { mnemonic: string } };
 }
 
@@ -40,7 +34,7 @@ export const VerifyMnemonicScreen: React.FC<VerifyMnemonicScreenProps> = ({
   }, []);
 
   const initializeWords = () => {
-    const words = mnemonic.split(' ').map((word, index) => ({
+    const words = mnemonic.split(" ").map((word, index) => ({
       index,
       word,
       selected: false,
@@ -49,58 +43,62 @@ export const VerifyMnemonicScreen: React.FC<VerifyMnemonicScreenProps> = ({
     setOriginalWords(words);
 
     // 打乱助记词顺序
-    const shuffled = shuffle(words).map(w => ({ ...w, selected: false }));
+    const shuffled = shuffle(words).map((w) => ({ ...w, selected: false }));
     setShuffledWords(shuffled);
   };
 
   const handleWordPress = (word: MnemonicWordType, arrayIndex: number) => {
     // 添加到已选择列表
-    setSelectedWords(prev => [...prev, word]);
+    setSelectedWords((prev) => [...prev, word]);
 
     // 标记为已选择
-    setShuffledWords(prev =>
-      prev.map((w, i) => (i === arrayIndex ? { ...w, selected: true } : w))
+    setShuffledWords((prev) =>
+      prev.map((w, i) => (i === arrayIndex ? { ...w, selected: true } : w)),
     );
   };
 
   const handleRemoveWord = (word: MnemonicWordType, arrayIndex: number) => {
     // 从已选择列表移除
-    setSelectedWords(prev => prev.filter((_, i) => i !== arrayIndex));
+    setSelectedWords((prev) => prev.filter((_, i) => i !== arrayIndex));
 
     // 在打乱列表中取消选择
-    setShuffledWords(prev =>
-      prev.map(w => (w.word === word.word && w.index === word.index ? { ...w, selected: false } : w))
+    setShuffledWords((prev) =>
+      prev.map((w) =>
+        w.word === word.word && w.index === word.index
+          ? { ...w, selected: false }
+          : w,
+      ),
     );
   };
 
   const handleReset = () => {
     setSelectedWords([]);
-    setShuffledWords(prev => prev.map(w => ({ ...w, selected: false })));
+    setShuffledWords((prev) => prev.map((w) => ({ ...w, selected: false })));
   };
 
   const handleVerify = () => {
     // 验证是否全部选择
     if (selectedWords.length !== originalWords.length) {
-      Alert.alert('提示', '请选择所有助记词');
+      Alert.alert("提示", "请选择所有助记词");
       return;
     }
 
     // 验证顺序是否正确
     const isCorrect = selectedWords.every(
-      (word, index) => word.index === originalWords[index].index
+      (word, index) => word.index === originalWords[index].index,
     );
 
     if (isCorrect) {
-      Alert.alert('验证成功', '助记词顺序正确', [
+      Alert.alert("验证成功", "助记词顺序正确", [
         {
-          text: '继续',
-          onPress: () => navigation.navigate('SetPassword', { mnemonic }),
+          text: "继续",
+          onPress: () => navigation.navigate("SetPassword", { mnemonic }),
         },
       ]);
     } else {
-      Alert.alert('验证失败', '助记词顺序不正确，请重新选择', [
+      Alert.alert("验证失败", "助记词顺序不正确，请重新选择", [
         {
-          text: '重试',
+          text: "重试",
           onPress: handleReset,
         },
       ]);
@@ -113,14 +111,14 @@ export const VerifyMnemonicScreen: React.FC<VerifyMnemonicScreenProps> = ({
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>验证助记词</Text>
-        <Text style={styles.subtitle}>
-          请按正确顺序点击下方的助记词
-        </Text>
+        <Text style={styles.subtitle}>请按正确顺序点击下方的助记词</Text>
 
         {/* 进度条 */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            <View
+              style={[styles.progressFill, { width: `${progress * 100}%` }]}
+            />
           </View>
           <Text style={styles.progressText}>
             {selectedWords.length} / {originalWords.length}
@@ -198,17 +196,17 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: colors.surfaceLight,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: spacing.sm,
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     backgroundColor: colors.primary,
   },
   progressText: {
     ...typography.caption,
     color: colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   selectedCard: {
     marginBottom: spacing.lg,
@@ -225,11 +223,11 @@ const styles = StyleSheet.create({
   emptyText: {
     ...typography.body,
     color: colors.text.disabled,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: spacing.xl,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
   },
   actionButton: {

@@ -2,9 +2,9 @@
  * 助记词单词卡片组件
  */
 
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, typography, spacing, shadows } from '@theme';
+import React from "react";
+import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
+import { colors, typography, spacing, shadows } from "@/theme";
 
 interface MnemonicWordProps {
   word: string;
@@ -47,8 +47,8 @@ export const MnemonicWord: React.FC<MnemonicWordProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surfaceLight,
     borderRadius: 12,
     paddingVertical: spacing.sm,

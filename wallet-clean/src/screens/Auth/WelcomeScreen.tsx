@@ -1,61 +1,60 @@
 /**
- * 欢迎页面
+ * 欢迎页面 - 参考 Rabby Wallet 设计
  */
 
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  Image,
-} from 'react-native';
-import { colors, typography, spacing } from '@theme';
-import { Button } from '@components/common/Button';
-import type { AuthScreenNavigationProp } from '@types/navigation.types';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, typography, spacing } from "@/theme";
+import { Button } from "@components/common/Button";
+import type { AuthScreenNavigationProp } from "@/types/navigation.types";
 
 interface WelcomeScreenProps {
-  navigation: AuthScreenNavigationProp<'Welcome'>;
+  navigation: AuthScreenNavigationProp<"Welcome">;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const handleCreateWallet = () => {
-    navigation.navigate('GenerateMnemonic', { mnemonicLength: 12 });
+    navigation.navigate("GenerateMnemonic", { mnemonicLength: 12 });
   };
 
   const handleImportWallet = () => {
-    // TODO: 导航到导入页面
-    console.log('导入钱包');
+    navigation.navigate("ImportWallet");
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Logo 区域 */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoText}>🔐</Text>
+        {/* Logo 和标题区域 */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logo}>
+              <Text style={styles.logoText}>🦊</Text>
+            </View>
           </View>
-          <Text style={styles.title}>加密钱包</Text>
-          <Text style={styles.subtitle}>安全、简单、可靠</Text>
+          <Text style={styles.title}>Crypto Wallet</Text>
+          <Text style={styles.subtitle}>安全、简单、可靠的加密钱包</Text>
         </View>
 
-        {/* 特性列表 */}
+        {/* 特性卡片 */}
         <View style={styles.features}>
-          <FeatureItem
+          <FeatureCard
             icon="🔒"
             title="安全可靠"
-            description="助记词加密存储，永不离开设备"
+            description="系统级加密存储，助记词永不离开设备"
+            gradient={["#1E3A8A", "#3B82F6"]}
           />
-          <FeatureItem
+          <FeatureCard
             icon="⚡"
             title="快速便捷"
-            description="支持多链资产管理，一键切换"
+            description="支持多链资产管理，自动网络切换"
+            gradient={["#7C3AED", "#A78BFA"]}
           />
-          <FeatureItem
+          <FeatureCard
             icon="🌐"
-            title="DApp 支持"
-            description="无缝连接去中心化应用"
+            title="DeFi 就绪"
+            description="交易预览、安全扫描、智能合约交互"
+            gradient={["#059669", "#10B981"]}
           />
         </View>
 
@@ -86,16 +85,24 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   );
 };
 
-interface FeatureItemProps {
+interface FeatureCardProps {
   icon: string;
   title: string;
   description: string;
+  gradient: string[];
 }
 
-const FeatureItem: React.FC<FeatureItemProps> = ({ icon, title, description }) => {
+const FeatureCard: React.FC<FeatureCardProps> = ({
+  icon,
+  title,
+  description,
+  gradient,
+}) => {
   return (
-    <View style={styles.featureItem}>
-      <Text style={styles.featureIcon}>{icon}</Text>
+    <View style={styles.featureCard}>
+      <View style={[styles.featureIconContainer, { backgroundColor: gradient[0] }]}>
+        <Text style={styles.featureIcon}>{icon}</Text>
+      </View>
       <View style={styles.featureContent}>
         <Text style={styles.featureTitle}>{title}</Text>
         <Text style={styles.featureDescription}>{description}</Text>
@@ -112,20 +119,27 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
-  logoContainer: {
-    alignItems: 'center',
+  header: {
+    alignItems: "center",
     marginTop: spacing.xxxl,
   },
-  logoPlaceholder: {
+  logoContainer: {
+    marginBottom: spacing.lg,
+  },
+  logo: {
     width: 100,
     height: 100,
     borderRadius: 50,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   logoText: {
     fontSize: 48,
@@ -134,21 +148,35 @@ const styles = StyleSheet.create({
     ...typography.h1,
     color: colors.text.primary,
     marginBottom: spacing.sm,
+    fontWeight: "700",
   },
   subtitle: {
     ...typography.body,
     color: colors.text.secondary,
+    textAlign: "center",
   },
   features: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  featureCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  featureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
   },
   featureIcon: {
-    fontSize: 32,
-    marginRight: spacing.md,
+    fontSize: 24,
   },
   featureContent: {
     flex: 1,
@@ -157,21 +185,23 @@ const styles = StyleSheet.create({
     ...typography.h4,
     color: colors.text.primary,
     marginBottom: spacing.xs,
+    fontWeight: "600",
   },
   featureDescription: {
     ...typography.caption,
     color: colors.text.secondary,
+    lineHeight: 18,
   },
   actions: {
     gap: spacing.md,
   },
   button: {
-    width: '100%',
+    width: "100%",
   },
   disclaimer: {
     ...typography.caption,
     color: colors.text.disabled,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.md,
   },
 });

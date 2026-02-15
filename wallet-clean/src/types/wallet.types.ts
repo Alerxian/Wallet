@@ -45,7 +45,6 @@ export interface MnemonicWord {
  */
 export interface CreateWalletParams {
   name: string;                  // 钱包名称
-  password: string;              // 加密密码
   mnemonic: string;              // 助记词
   mnemonicLength?: MnemonicLength; // 助记词长度
 }
@@ -55,17 +54,15 @@ export interface CreateWalletParams {
  */
 export interface ImportWalletParams {
   name: string;                  // 钱包名称
-  password: string;              // 加密密码
   mnemonic?: string;             // 助记词（可选）
   privateKey?: string;           // 私钥（可选）
 }
 
 /**
- * 钱包解锁参数
+ * 钱包解锁参数（已废弃，不再需要密码）
  */
 export interface UnlockWalletParams {
   walletId: string;              // 钱包 ID
-  password: string;              // 密码
 }
 
 /**

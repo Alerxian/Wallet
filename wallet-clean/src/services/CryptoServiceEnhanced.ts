@@ -1,13 +1,21 @@
 /**
- * 增强版加密服务
+ * 增强版加密服务（已废弃）
  *
- * ⚠️ 注意：当前实现使用简化版加密
+ * ⚠️ 已废弃：不再使用应用层加密
+ *
+ * 项目已改为直接使用 expo-secure-store 的系统级加密：
+ * - iOS: Keychain
+ * - Android: EncryptedSharedPreferences
+ *
+ * 保留此文件仅供参考
+ *
+ * 原实现：使用简化版加密（XOR）
  * 生产环境建议使用 react-native-aes-crypto 或 expo-crypto 的 AES 实现
  */
 
-import * as Crypto from 'expo-crypto';
-import { EncryptedData } from '@types/storage.types';
-import { ENCRYPTION_ALGORITHM } from '@utils/constants';
+import * as Crypto from "expo-crypto";
+import { EncryptedData } from "@/types/storage.types";
+import { ENCRYPTION_ALGORITHM } from "@utils/constants";
 
 export class CryptoServiceEnhanced {
   /**
@@ -31,8 +39,8 @@ export class CryptoServiceEnhanced {
    */
   private static bytesToHex(bytes: Uint8Array): string {
     return Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   /**
@@ -57,7 +65,7 @@ export class CryptoServiceEnhanced {
   private static async deriveKey(
     password: string,
     salt: string,
-    iterations: number = 100000
+    iterations: number = 100000,
   ): Promise<string> {
     // 组合密码和盐值
     const combined = password + salt;
@@ -67,7 +75,7 @@ export class CryptoServiceEnhanced {
     for (let i = 0; i < iterations / 1000; i++) {
       key = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
-        key
+        key,
       );
     }
 
@@ -104,7 +112,10 @@ export class CryptoServiceEnhanced {
 
       const encrypted = new Uint8Array(dataBytes.length);
       for (let i = 0; i < dataBytes.length; i++) {
-        encrypted[i] = dataBytes[i] ^ keyBytes[i % keyBytes.length] ^ ivBytes[i % ivBytes.length];
+        encrypted[i] =
+          dataBytes[i] ^
+          keyBytes[i % keyBytes.length] ^
+          ivBytes[i % ivBytes.length];
       }
 
       const ciphertext = this.bytesToHex(encrypted);
@@ -127,7 +138,10 @@ export class CryptoServiceEnhanced {
    * @param password 解密密码
    * @returns 解密后的明文
    */
-  static async decrypt(encryptedData: EncryptedData, password: string): Promise<string> {
+  static async decrypt(
+    encryptedData: EncryptedData,
+    password: string,
+  ): Promise<string> {
     try {
       const { ciphertext, iv, salt } = encryptedData;
 
@@ -141,7 +155,10 @@ export class CryptoServiceEnhanced {
 
       const decrypted = new Uint8Array(encrypted.length);
       for (let i = 0; i < encrypted.length; i++) {
-        decrypted[i] = encrypted[i] ^ keyBytes[i % keyBytes.length] ^ ivBytes[i % ivBytes.length];
+        decrypted[i] =
+          encrypted[i] ^
+          keyBytes[i % keyBytes.length] ^
+          ivBytes[i % ivBytes.length];
       }
 
       return new TextDecoder().decode(decrypted);
@@ -161,14 +178,20 @@ export class CryptoServiceEnhanced {
    * SHA256 哈希
    */
   static async sha256(data: string): Promise<string> {
-    return await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, data);
+    return await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      data,
+    );
   }
 
   /**
    * SHA512 哈希
    */
   static async sha512(data: string): Promise<string> {
-    return await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA512, data);
+    return await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA512,
+      data,
+    );
   }
 
   /**
@@ -176,7 +199,7 @@ export class CryptoServiceEnhanced {
    */
   static async verifyPassword(
     encryptedData: EncryptedData,
-    password: string
+    password: string,
   ): Promise<boolean> {
     try {
       await this.decrypt(encryptedData, password);

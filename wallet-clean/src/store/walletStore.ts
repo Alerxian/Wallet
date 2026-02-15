@@ -3,9 +3,9 @@
  * 使用 Zustand 轻量级状态管理
  */
 
-import { create } from 'zustand';
-import { Wallet } from '@types/wallet.types';
-import { WalletService } from '@services/WalletService';
+import { create } from "zustand";
+import { Wallet } from "@/types/wallet.types";
+import { WalletService } from "@services/WalletService";
 
 interface WalletState {
   // 状态
@@ -17,9 +17,16 @@ interface WalletState {
   // 操作
   loadWallets: () => Promise<void>;
   setCurrentWallet: (wallet: Wallet | null) => void;
-  createWallet: (name: string, password: string, mnemonic: string) => Promise<Wallet>;
-  importWallet: (name: string, password: string, mnemonic?: string, privateKey?: string) => Promise<Wallet>;
-  deleteWallet: (walletId: string, password: string) => Promise<void>;
+  createWallet: (
+    name: string,
+    mnemonic: string,
+  ) => Promise<Wallet>;
+  importWallet: (
+    name: string,
+    mnemonic?: string,
+    privateKey?: string,
+  ) => Promise<Wallet>;
+  deleteWallet: (walletId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -51,20 +58,21 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   // 创建钱包
-  createWallet: async (name, password, mnemonic) => {
+  createWallet: async (name, mnemonic) => {
     set({ isLoading: true, error: null });
     try {
+      console.log("创建钱包，参数：", { name, mnemonic });
       const wallet = await WalletService.createWallet({
         name,
-        password,
         mnemonic,
       });
+      console.log("钱包创建成功:", wallet);
 
       const wallets = await WalletService.getAllWallets();
       set({
         wallets,
         currentWallet: wallet,
-        isLoading: false
+        isLoading: false,
       });
 
       return wallet;
@@ -75,12 +83,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   // 导入钱包
-  importWallet: async (name, password, mnemonic, privateKey) => {
+  importWallet: async (name, mnemonic, privateKey) => {
     set({ isLoading: true, error: null });
     try {
       const wallet = await WalletService.importWallet({
         name,
-        password,
         mnemonic,
         privateKey,
       });
@@ -89,7 +96,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       set({
         wallets,
         currentWallet: wallet,
-        isLoading: false
+        isLoading: false,
       });
 
       return wallet;
@@ -100,10 +107,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   // 删除钱包
-  deleteWallet: async (walletId, password) => {
+  deleteWallet: async (walletId) => {
     set({ isLoading: true, error: null });
     try {
-      await WalletService.deleteWallet(walletId, password);
+      await WalletService.deleteWallet(walletId);
 
       const wallets = await WalletService.getAllWallets();
       const currentWallet = get().currentWallet;

@@ -2,25 +2,19 @@
  * 备份助记词页面
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
-import { colors, typography, spacing } from '@theme';
-import { Button } from '@components/common/Button';
-import { Card } from '@components/common/Card';
-import { MnemonicGrid } from '@components/wallet/MnemonicGrid';
-import { MnemonicWord as MnemonicWordType } from '@types/wallet.types';
-import { useScreenProtection } from '@hooks/useScreenProtection';
-import type { AuthScreenNavigationProp } from '@types/navigation.types';
+import React, { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, typography, spacing } from "@/theme";
+import { Button } from "@components/common/Button";
+import { Card } from "@components/common/Card";
+import { MnemonicGrid } from "@components/wallet/MnemonicGrid";
+import { MnemonicWord as MnemonicWordType } from "@/types/wallet.types";
+import { useScreenProtection } from "@hooks/useScreenProtection";
+import type { AuthScreenNavigationProp } from "@/types/navigation.types";
 
 interface BackupMnemonicScreenProps {
-  navigation: AuthScreenNavigationProp<'BackupMnemonic'>;
+  navigation: AuthScreenNavigationProp<"BackupMnemonic">;
   route: { params: { mnemonic: string } };
 }
 
@@ -34,7 +28,7 @@ export const BackupMnemonicScreen: React.FC<BackupMnemonicScreenProps> = ({
   // 启用截屏保护
   useScreenProtection(true);
 
-  const words: MnemonicWordType[] = mnemonic.split(' ').map((word, index) => ({
+  const words: MnemonicWordType[] = mnemonic.split(" ").map((word, index) => ({
     index,
     word,
     selected: false,
@@ -43,21 +37,21 @@ export const BackupMnemonicScreen: React.FC<BackupMnemonicScreenProps> = ({
   const handleConfirm = () => {
     if (!confirmed) {
       Alert.alert(
-        '确认备份',
-        '请确认您已经安全备份了助记词。如果丢失，您将无法恢复钱包。',
+        "确认备份",
+        "请确认您已经安全备份了助记词。如果丢失，您将无法恢复钱包。",
         [
-          { text: '取消', style: 'cancel' },
+          { text: "取消", style: "cancel" },
           {
-            text: '已备份',
+            text: "已备份",
             onPress: () => {
               setConfirmed(true);
-              navigation.navigate('VerifyMnemonic', { mnemonic });
+              navigation.navigate("SetPassword", { mnemonic });
             },
           },
-        ]
+        ],
       );
     } else {
-      navigation.navigate('VerifyMnemonic', { mnemonic });
+      navigation.navigate("SetPassword", { mnemonic });
     }
   };
 
@@ -72,10 +66,8 @@ export const BackupMnemonicScreen: React.FC<BackupMnemonicScreenProps> = ({
         <Card style={styles.warningCard} variant="outlined">
           <Text style={styles.warningTitle}>🔒 重要提示</Text>
           <Text style={styles.warningText}>
-            • 请使用纸笔抄写，不要截屏{'\n'}
-            • 请勿通过网络传输或存储{'\n'}
-            • 请保存在安全的地方{'\n'}
-            • 任何人获得助记词都可以控制您的资产
+            • 请使用纸笔抄写，不要截屏{"\n"}• 请勿通过网络传输或存储{"\n"}•
+            请保存在安全的地方{"\n"}• 任何人获得助记词都可以控制您的资产
           </Text>
         </Card>
 

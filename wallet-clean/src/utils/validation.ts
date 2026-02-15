@@ -2,6 +2,8 @@
  * 验证工具函数
  */
 
+import * as bip39 from "@scure/bip39";
+import { wordlist } from "@scure/bip39/wordlists/english.js";
 import { REGEX, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from './constants';
 
 /**
@@ -44,9 +46,8 @@ export const isValidMnemonic = (mnemonic: string, expectedLength?: 12 | 24): boo
     }
   }
 
-  // 检查每个单词是否为有效字符
-  const wordRegex = /^[a-z]+$/;
-  return words.every(word => wordRegex.test(word));
+  // 使用 @scure/bip39 验证助记词（包括校验和）
+  return bip39.validateMnemonic(mnemonic, wordlist);
 };
 
 /**

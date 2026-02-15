@@ -10,8 +10,8 @@ export const DEFAULT_MNEMONIC_LENGTH = 12;
 export const PASSWORD_MIN_LENGTH = 6;
 export const PASSWORD_MAX_LENGTH = 20;
 
-// 存储键名前缀
-export const STORAGE_PREFIX = '@wallet:';
+// 存储键名前缀（只能包含字母、数字、点号、连字符和下划线）
+export const STORAGE_PREFIX = 'wallet.';
 
 // 加密算法
 export const ENCRYPTION_ALGORITHM = 'AES-256-GCM';

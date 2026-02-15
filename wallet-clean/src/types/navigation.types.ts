@@ -30,6 +30,17 @@ export type MainStackParamList = {
   Settings: undefined;
   Security: undefined;
   About: undefined;
+  Networks: undefined;
+  AddNetwork: undefined;
+  Tokens: undefined;
+  AddToken: undefined;
+  Swap: undefined;
+  NFTList: undefined;
+  NFTDetail: { contract: string; tokenId: string };
+  DeFi: undefined;
+  DAppConnections: undefined;
+  Portfolio: undefined;
+  HardwareWallet: undefined;
 };
 
 /**

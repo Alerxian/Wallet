@@ -2,11 +2,11 @@
  * 地址展示组件
  */
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { colors, typography, spacing } from '@theme';
-import { formatAddress } from '@utils/format';
-import * as Clipboard from 'expo-clipboard';
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { colors, typography, spacing } from "@/theme";
+import { formatAddress } from "@utils/format";
+import * as Clipboard from "expo-clipboard";
 
 interface AddressDisplayProps {
   address: string;
@@ -26,7 +26,7 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
   const handleCopy = async () => {
     await Clipboard.setStringAsync(address);
     setCopied(true);
-    Alert.alert('已复制', '地址已复制到剪贴板');
+    Alert.alert("已复制", "地址已复制到剪贴板");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -41,7 +41,7 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
 
         {showCopy && (
           <TouchableOpacity style={styles.copyButton} onPress={handleCopy}>
-            <Text style={styles.copyIcon}>{copied ? '✓' : '📋'}</Text>
+            <Text style={styles.copyIcon}>{copied ? "✓" : "📋"}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -59,8 +59,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   addressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.surfaceLight,
     borderRadius: 12,
     paddingVertical: spacing.sm,
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.text.primary,
     flex: 1,
-    fontFamily: 'monospace',
+    fontFamily: "monospace",
   },
   copyButton: {
     marginLeft: spacing.sm,

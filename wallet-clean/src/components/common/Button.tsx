@@ -11,7 +11,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
-import { colors, typography, spacing, shadows } from "@theme";
+import { colors, typography, spacing, shadows } from "@/theme";
 
 interface ButtonProps {
   title: string;

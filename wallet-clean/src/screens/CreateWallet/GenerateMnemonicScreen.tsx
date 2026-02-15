@@ -2,26 +2,23 @@
  * 生成助记词页面
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, typography, spacing } from "@/theme";
+import { Button } from "@components/common/Button";
+import { Card } from "@components/common/Card";
+import { MnemonicGrid } from "@components/wallet/MnemonicGrid";
+import { WalletService } from "@services/WalletService";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
-import { colors, typography, spacing } from '@theme';
-import { Button } from '@components/common/Button';
-import { Card } from '@components/common/Card';
-import { MnemonicGrid } from '@components/wallet/MnemonicGrid';
-import { WalletService } from '@services/WalletService';
-import { MnemonicLength, MnemonicWord as MnemonicWordType } from '@types/wallet.types';
-import { useScreenProtection } from '@hooks/useScreenProtection';
-import type { AuthScreenNavigationProp } from '@types/navigation.types';
+  MnemonicLength,
+  MnemonicWord as MnemonicWordType,
+} from "@/types/wallet.types";
+import { useScreenProtection } from "@hooks/useScreenProtection";
+import type { AuthScreenNavigationProp } from "@/types/navigation.types";
 
 interface GenerateMnemonicScreenProps {
-  navigation: AuthScreenNavigationProp<'GenerateMnemonic'>;
+  navigation: AuthScreenNavigationProp<"GenerateMnemonic">;
   route: { params: { mnemonicLength: 12 | 24 } };
 }
 
@@ -29,7 +26,7 @@ export const GenerateMnemonicScreen: React.FC<GenerateMnemonicScreenProps> = ({
   navigation,
   route,
 }) => {
-  const [mnemonic, setMnemonic] = useState<string>('');
+  const [mnemonic, setMnemonic] = useState<string>("");
   const [words, setWords] = useState<MnemonicWordType[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
 
@@ -42,21 +39,23 @@ export const GenerateMnemonicScreen: React.FC<GenerateMnemonicScreenProps> = ({
     generateMnemonic();
   }, []);
 
-  const generateMnemonic = () => {
+  const generateMnemonic = async () => {
+    console.log("生成助记词，长度：", mnemonicLength);
     try {
-      const newMnemonic = WalletService.generateMnemonic(
-        mnemonicLength as MnemonicLength
+      const newMnemonic = await WalletService.generateMnemonic(
+        mnemonicLength as MnemonicLength,
       );
+      console.log(newMnemonic, "newMnemonic");
       setMnemonic(newMnemonic);
 
-      const wordArray = newMnemonic.split(' ').map((word, index) => ({
+      const wordArray = newMnemonic.split(" ").map((word, index) => ({
         index,
         word,
         selected: false,
       }));
       setWords(wordArray);
     } catch (error) {
-      Alert.alert('错误', '生成助记词失败，请重试');
+      Alert.alert("错误", "生成助记词失败，请重试");
     }
   };
 
@@ -66,11 +65,11 @@ export const GenerateMnemonicScreen: React.FC<GenerateMnemonicScreenProps> = ({
 
   const handleNext = () => {
     if (!isRevealed) {
-      Alert.alert('提示', '请先查看助记词');
+      Alert.alert("提示", "请先查看助记词");
       return;
     }
 
-    navigation.navigate('BackupMnemonic', { mnemonic });
+    navigation.navigate("BackupMnemonic", { mnemonic });
   };
 
   return (
@@ -84,19 +83,15 @@ export const GenerateMnemonicScreen: React.FC<GenerateMnemonicScreenProps> = ({
         <Card style={styles.warningCard} variant="outlined">
           <Text style={styles.warningTitle}>⚠️ 安全提示</Text>
           <Text style={styles.warningText}>
-            • 助记词是恢复钱包的唯一方式{'\n'}
-            • 请勿截屏或拍照{'\n'}
-            • 请勿通过网络传输{'\n'}
-            • 请勿告诉任何人{'\n'}
-            • 丢失助记词将无法找回资产
+            • 助记词是恢复钱包的唯一方式{"\n"}• 请勿截屏或拍照{"\n"}•
+            请勿通过网络传输{"\n"}• 请勿告诉任何人{"\n"}•
+            丢失助记词将无法找回资产
           </Text>
         </Card>
 
         {!isRevealed ? (
           <Card style={styles.revealCard}>
-            <Text style={styles.revealText}>
-              点击下方按钮查看您的助记词
-            </Text>
+            <Text style={styles.revealText}>点击下方按钮查看您的助记词</Text>
             <Button
               title="查看助记词"
               onPress={handleReveal}
@@ -166,7 +161,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   revealCard: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.xl,
     marginBottom: spacing.lg,
   },
@@ -174,7 +169,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text.secondary,
     marginBottom: spacing.lg,
-    textAlign: 'center',
+    textAlign: "center",
   },
   revealButton: {
     minWidth: 200,
@@ -186,10 +181,10 @@ const styles = StyleSheet.create({
     ...typography.h4,
     color: colors.text.primary,
     marginBottom: spacing.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
   },
   actionButton: {
