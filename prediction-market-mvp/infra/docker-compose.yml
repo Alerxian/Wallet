@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: prediction-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prediction_local_dev_change_me}
+      POSTGRES_DB: prediction
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - prediction_pg_data:/var/lib/postgresql/data
+
+volumes:
+  prediction_pg_data:

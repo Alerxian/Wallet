@@ -1,0 +1,18 @@
+{
+  "name": "prediction-market-mvp",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "contracts",
+    "backend",
+    "mobile"
+  ],
+  "scripts": {
+    "install:all": "npm install --workspaces",
+    "build": "npm --prefix contracts run build && npm --prefix backend run build && npm --prefix mobile run typecheck",
+    "test": "npm --prefix contracts run test",
+    "dev:up": "./scripts/dev-up.sh",
+    "dev:down": "./scripts/dev-down.sh",
+    "dev:start": "./scripts/dev-start.sh"
+  }
+}

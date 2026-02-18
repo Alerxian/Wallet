@@ -1,0 +1,18 @@
+export default () => ({
+  port: Number(process.env.PORT || 3001),
+  rpcUrl: process.env.RPC_URL || "http://127.0.0.1:8545",
+  factoryAddress: process.env.FACTORY_ADDRESS || "",
+  creatorPrivateKey: process.env.CREATOR_PRIVATE_KEY || "",
+  chainId: Number(process.env.CHAIN_ID || 31337),
+  databaseUrl: process.env.DATABASE_URL || "",
+  indexerConfirmations: Number(process.env.INDEXER_CONFIRMATIONS || 0),
+  indexerPollIntervalMs: Number(process.env.INDEXER_POLL_INTERVAL_MS || 3000),
+  indexerBlockRange: Number(process.env.INDEXER_BLOCK_RANGE || 1000),
+  indexerStartBlock: Number(process.env.INDEXER_START_BLOCK || -1),
+  siweDomain: process.env.SIWE_DOMAIN || "",
+  siweUri: process.env.SIWE_URI || "http://127.0.0.1:3001",
+  siweSessionTtlSeconds: Number(process.env.SIWE_SESSION_TTL_SECONDS || 3600),
+  siweIssuedAtWindowSeconds: Number(process.env.SIWE_ISSUED_AT_WINDOW_SECONDS || 300),
+  corsOrigins: process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:8081,http://127.0.0.1:8081",
+  adminAddresses: process.env.ADMIN_ADDRESSES || "",
+});

@@ -16,7 +16,47 @@ import { RPCService } from './RPCService';
 import { WalletService } from './WalletService';
 import { StorageService } from './StorageService';
 
+interface TransactionIndexRecord {
+  address: string;
+  txHash: string;
+  chainId: ChainId;
+  createdAt: number;
+}
+
 export class TransactionService {
+  private static getTransactionStorageKey(address: string): string {
+    return `transactions_${address}`;
+  }
+
+  private static getTxIndexKey(txHash: string, chainId: ChainId): string {
+    return `tx_index_${chainId}_${txHash.toLowerCase()}`;
+  }
+
+  private static async saveTxIndex(
+    txHash: string,
+    address: string,
+    chainId: ChainId
+  ): Promise<void> {
+    const indexKey = this.getTxIndexKey(txHash, chainId);
+    const record: TransactionIndexRecord = {
+      address,
+      txHash: txHash.toLowerCase(),
+      chainId,
+      createdAt: Date.now(),
+    };
+
+    await StorageService.setSecure(indexKey, JSON.stringify(record));
+  }
+
+  private static async getTxIndex(
+    txHash: string,
+    chainId: ChainId
+  ): Promise<TransactionIndexRecord | null> {
+    const indexKey = this.getTxIndexKey(txHash, chainId);
+    const indexStr = await StorageService.getSecure(indexKey);
+    return indexStr ? JSON.parse(indexStr) : null;
+  }
+
   /**
    * 估算 Gas 费用
    */
@@ -155,7 +195,7 @@ export class TransactionService {
         status: TransactionStatus.PENDING,
         timestamp: Date.now(),
         gasPrice: params.maxFeePerGas,
-      });
+      }, chainId);
 
       return txHash;
     } catch (error) {
@@ -211,9 +251,9 @@ export class TransactionService {
       await RPCService.waitForTransaction(txHash, confirmations, chainId);
 
       // 更新交易状态
-      await this.updateTransactionStatus(txHash, TransactionStatus.CONFIRMED);
+      await this.updateTransactionStatus(txHash, TransactionStatus.CONFIRMED, chainId);
     } catch (error) {
-      await this.updateTransactionStatus(txHash, TransactionStatus.FAILED);
+      await this.updateTransactionStatus(txHash, TransactionStatus.FAILED, chainId);
       throw new Error(`等待交易确认失败: ${error}`);
     }
   }
@@ -235,9 +275,12 @@ export class TransactionService {
   /**
    * 保存交易记录
    */
-  private static async saveTransaction(tx: Transaction): Promise<void> {
+  private static async saveTransaction(
+    tx: Transaction,
+    chainId: ChainId = ChainId.ETHEREUM
+  ): Promise<void> {
     try {
-      const key = `transactions_${tx.from}`;
+      const key = this.getTransactionStorageKey(tx.from);
       const txsStr = await StorageService.getSecure(key);
       const txs: Transaction[] = txsStr ? JSON.parse(txsStr) : [];
 
@@ -249,6 +292,7 @@ export class TransactionService {
       }
 
       await StorageService.setSecure(key, JSON.stringify(txs));
+      await this.saveTxIndex(tx.hash, tx.from, chainId);
     } catch (error) {
       console.error('保存交易记录失败:', error);
     }
@@ -259,7 +303,7 @@ export class TransactionService {
    */
   static async getTransactions(address: string): Promise<Transaction[]> {
     try {
-      const key = `transactions_${address}`;
+      const key = this.getTransactionStorageKey(address);
       const txsStr = await StorageService.getSecure(key);
       return txsStr ? JSON.parse(txsStr) : [];
     } catch (error) {
@@ -272,12 +316,30 @@ export class TransactionService {
    */
   private static async updateTransactionStatus(
     txHash: string,
-    status: TransactionStatus
+    status: TransactionStatus,
+    chainId: ChainId = ChainId.ETHEREUM
   ): Promise<void> {
     try {
-      // 这里需要遍历所有地址的交易记录来更新
-      // 简化实现，实际应该有更好的索引方式
-      console.log(`更新交易状态: ${txHash} -> ${status}`);
+      const normalizedHash = txHash.toLowerCase();
+      const index = await this.getTxIndex(normalizedHash, chainId);
+
+      if (!index) {
+        console.warn(`交易索引不存在: ${txHash} (chainId=${chainId})`);
+        return;
+      }
+
+      const key = this.getTransactionStorageKey(index.address);
+      const txsStr = await StorageService.getSecure(key);
+      const txs: Transaction[] = txsStr ? JSON.parse(txsStr) : [];
+
+      const target = txs.find((tx) => tx.hash.toLowerCase() === normalizedHash);
+      if (!target) {
+        console.warn(`未找到交易记录: ${txHash} (address=${index.address})`);
+        return;
+      }
+
+      target.status = status;
+      await StorageService.setSecure(key, JSON.stringify(txs));
     } catch (error) {
       console.error('更新交易状态失败:', error);
     }

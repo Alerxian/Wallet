@@ -1,0 +1,14 @@
+{
+  "name": "prediction-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test -vv",
+    "test:fuzz": "forge test --match-test testFuzz -vv",
+    "test:invariant": "forge test --match-path test/invariant/*.t.sol -vv",
+    "deploy:local": "forge script script/Deploy.s.sol:DeployScript --rpc-url http://127.0.0.1:8545 --broadcast",
+    "deploy:sepolia": "forge script script/Deploy.s.sol:DeployScript --rpc-url $RPC_URL --broadcast --verify",
+    "export:abi": "node scripts/export-abi.mjs"
+  }
+}
