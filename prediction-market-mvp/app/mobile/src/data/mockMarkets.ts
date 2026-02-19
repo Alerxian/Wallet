@@ -1,0 +1,58 @@
+import { Market } from '../types';
+
+export const mockMarkets: Market[] = [
+  {
+    id: 'MKT-1072',
+    question: 'Will ETH close above $4,000 before 2026-12-31?',
+    status: 'OPEN',
+    closeTime: '2026-12-31T23:59:59Z',
+    address: '0x31ce...04fa',
+    yesPool: 162000,
+    noPool: 125000,
+  },
+  {
+    id: 'MKT-1068',
+    question: 'Will US CPI print below 2.5% in next release?',
+    status: 'OPEN',
+    closeTime: '2026-03-12T13:30:00Z',
+    address: '0x78db...8cd0',
+    yesPool: 83000,
+    noPool: 79000,
+  },
+  {
+    id: 'MKT-1059',
+    question: 'Will BTC ETF daily inflow exceed $1B this week?',
+    status: 'CLOSED',
+    closeTime: '2026-02-20T23:00:00Z',
+    address: '0x1bb3...1b21',
+    yesPool: 225000,
+    noPool: 181000,
+  },
+  {
+    id: 'MKT-1051',
+    question: 'Will Apple release AI phone hardware this year?',
+    status: 'RESOLVED',
+    closeTime: '2026-01-20T05:00:00Z',
+    address: '0x91a2...6dfc',
+    yesPool: 120000,
+    noPool: 198000,
+  },
+  {
+    id: 'MKT-1046',
+    question: 'Will Solana maintain > 2k TPS average this quarter?',
+    status: 'OPEN',
+    closeTime: '2026-04-01T00:00:00Z',
+    address: '0x6f22...3cab',
+    yesPool: 141000,
+    noPool: 90000,
+  },
+  {
+    id: 'MKT-1033',
+    question: 'Will FED cut rates before Q3 2026?',
+    status: 'OPEN',
+    closeTime: '2026-07-01T00:00:00Z',
+    address: '0x48dd...a972',
+    yesPool: 100000,
+    noPool: 133000,
+  },
+];
