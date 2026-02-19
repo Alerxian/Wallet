@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { fetchMarkets } from '../api/marketApi';
+import { HTTPError, TimeoutError } from 'ky';
+import { fetchTradeStatus, submitTradeIntent } from '../api/marketApi';
 import {
   AppSettings,
   ActivityFilters,
@@ -7,19 +8,25 @@ import {
   MainTab,
   Market,
   MarketFilters,
+  PendingTradeRecord,
   Position,
+  RetryCategory,
   SortMode,
   ThemeMode,
   TradeAction,
+  TradeLifecycleStatus,
   TradeSide,
+  TradeStatus,
 } from '../types';
 import {
   loadActiveTab,
+  loadPendingTrades,
   loadRecentMarketIds,
   loadSettings,
   loadThemeMode,
   loadWatchlistIds,
   saveActiveTab,
+  savePendingTrades,
   saveRecentMarketIds,
   saveSettings,
   saveThemeMode,
@@ -43,6 +50,7 @@ interface AppState {
   themeMode: ThemeMode;
   themeTransition: { id: number; x: number; y: number } | null;
   settings: AppSettings;
+  pendingTrades: PendingTradeRecord[];
   pendingTxs: ActivityItem[];
   historyTxs: ActivityItem[];
   diagnostics: string[];
@@ -63,7 +71,50 @@ interface AppState {
   setActivityStatusFilters: (statuses: ActivityFilters['statuses']) => void;
   setActivityActionFilters: (actions: ActivityFilters['actions']) => void;
   submitTrade: (params: { market: Market; side: TradeSide; amount: number; action: TradeAction }) => Promise<void>;
+  pollTradeStatus: (clientOrderId: string, startedAt?: number) => Promise<void>;
+  recoverPendingTrades: () => Promise<void>;
+  classifyTradeError: (error: unknown) => { category: RetryCategory; status: TradeLifecycleStatus; code: string };
   buildPositions: () => Position[];
+}
+
+const terminalStatuses = new Set<TradeLifecycleStatus>(['INDEXED', 'FINAL', 'FAILED_FATAL']);
+const retryStatuses = new Set<TradeLifecycleStatus>(['PENDING_CHAIN', 'CONFIRMED', 'FAILED_RETRYABLE', 'SUBMITTING', 'DRAFT']);
+const tradeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function toTradeStatus(status: TradeLifecycleStatus): TradeStatus {
+  switch (status) {
+    case 'DRAFT':
+    case 'SUBMITTING':
+    case 'PENDING_CHAIN':
+      return 'PENDING_CHAIN';
+    case 'CONFIRMED':
+      return 'CONFIRMED';
+    case 'INDEXED':
+    case 'FINAL':
+      return 'INDEXED';
+    case 'FAILED_RETRYABLE':
+      return 'FAILED_RETRYABLE';
+    case 'FAILED_FATAL':
+      return 'FAILED_FATAL';
+    case 'UNKNOWN_NEEDS_RECONCILE':
+      return 'UNKNOWN_NEEDS_RECONCILE';
+    default:
+      return 'FAILED';
+  }
+}
+
+function toActivityItem(record: PendingTradeRecord): ActivityItem {
+  return {
+    txHash: record.txHash ?? record.clientOrderId,
+    marketId: record.marketId,
+    marketQuestion: record.marketQuestion,
+    action: record.action,
+    side: record.side,
+    amount: record.amount,
+    status: toTradeStatus(record.status),
+    createdAt: record.createdAt,
+    errorMessage: record.lastErrorCode,
+  };
 }
 
 const initialFilters: MarketFilters = {
@@ -98,17 +149,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   themeMode: 'sand',
   themeTransition: null,
   settings: defaultSettings,
+  pendingTrades: [],
   pendingTxs: [],
   historyTxs: [],
   diagnostics: [],
 
   hydratePersisted: async () => {
-    const [watchlistIds, recentMarketIds, tab, mode, rawSettings] = await Promise.all([
+    const [watchlistIds, recentMarketIds, tab, mode, rawSettings, pendingTrades] = await Promise.all([
       loadWatchlistIds(),
       loadRecentMarketIds(),
       loadActiveTab(),
       loadThemeMode(),
       loadSettings(),
+      loadPendingTrades(),
     ]);
 
     const safeMode: ThemeMode = mode === 'night' ? 'night' : 'sand';
@@ -130,19 +183,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentTab: tab === 'PORTFOLIO' || tab === 'ACTIVITY' || tab === 'SETTINGS' ? tab : 'MARKETS',
       themeMode: safeMode,
       settings: parsedSettings,
+      pendingTrades,
+      pendingTxs: pendingTrades.map(toActivityItem),
     });
-    await get().loadMarkets();
+    await get().recoverPendingTrades();
   },
 
   loadMarkets: async () => {
-    set({ loadingMarkets: true, marketError: null });
-    try {
-      const markets = await fetchMarkets();
-      set({ markets, loadingMarkets: false });
-    } catch {
-      const diagnostics = [`${new Date().toISOString()} fetch /markets failed`].concat(get().diagnostics).slice(0, 8);
-      set({ loadingMarkets: false, marketError: 'Unable to load markets.', diagnostics });
-    }
+    set((state) => ({
+      loadingMarkets: false,
+      marketError: null,
+      diagnostics: [`${new Date().toISOString()} markets loading delegated to react-query`].concat(state.diagnostics).slice(0, 8),
+    }));
   },
 
   setCurrentTab: (tab) => {
@@ -199,48 +251,290 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActivityActionFilters: (actions) =>
     set((state) => ({ activityFilters: { ...state.activityFilters, actions } })),
 
+  classifyTradeError: (error) => {
+    if (error instanceof TimeoutError) {
+      return { category: 'RETRYABLE' as const, status: 'FAILED_RETRYABLE' as const, code: 'TIMEOUT' };
+    }
+
+    if (error instanceof HTTPError) {
+      if (error.response.status >= 500) {
+        return { category: 'RETRYABLE' as const, status: 'FAILED_RETRYABLE' as const, code: `HTTP_${error.response.status}` };
+      }
+
+      if (error.response.status >= 400) {
+        return { category: 'FATAL' as const, status: 'FAILED_FATAL' as const, code: `HTTP_${error.response.status}` };
+      }
+    }
+
+    return { category: 'RECONCILE' as const, status: 'UNKNOWN_NEEDS_RECONCILE' as const, code: 'UNKNOWN' };
+  },
+
   submitTrade: async ({ market, side, amount, action }) => {
-    const txHash = `0x${Math.random().toString(16).slice(2, 18)}`;
-    const base: ActivityItem = {
-      txHash,
+    const clientOrderId = `co_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+    const now = new Date().toISOString();
+
+    const baseRecord: PendingTradeRecord = {
+      clientOrderId,
       marketId: market.id,
       marketQuestion: market.question,
       action,
       side,
       amount,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
+      status: 'SUBMITTING',
+      retryCount: 0,
+      createdAt: now,
+      updatedAt: now,
     };
 
     set((state) => ({
-      pendingTxs: [base, ...state.pendingTxs],
-      diagnostics: [`${new Date().toISOString()} trade submitted ${txHash}`].concat(state.diagnostics).slice(0, 8),
+      pendingTrades: [baseRecord, ...state.pendingTrades],
+      pendingTxs: [toActivityItem(baseRecord), ...state.pendingTxs],
+      diagnostics: [`${new Date().toISOString()} trade submitting ${clientOrderId}`].concat(state.diagnostics).slice(0, 8),
     }));
+    void savePendingTrades(get().pendingTrades);
 
-    setTimeout(() => {
-      const latest = get().pendingTxs.find((item) => item.txHash === txHash);
-      if (!latest) {
+    try {
+      const intent = await submitTradeIntent({
+        marketId: market.id,
+        action,
+        side,
+        amount,
+        clientOrderId,
+      });
+
+      const updatedAt = new Date().toISOString();
+      set((state) => {
+        const pendingTrades: PendingTradeRecord[] = state.pendingTrades.map((item) => {
+          if (item.clientOrderId !== clientOrderId) {
+            return item;
+          }
+
+          const next: PendingTradeRecord = {
+            ...item,
+            txHash: intent.txHash,
+            status: 'PENDING_CHAIN',
+            updatedAt,
+          };
+
+          return next;
+        });
+
+        return {
+          pendingTrades,
+          pendingTxs: pendingTrades.map(toActivityItem),
+          diagnostics: [`${updatedAt} trade accepted ${intent.txHash}`].concat(state.diagnostics).slice(0, 8),
+        };
+      });
+      void savePendingTrades(get().pendingTrades);
+
+      await get().pollTradeStatus(clientOrderId, Date.now());
+    } catch (error) {
+      const classification = get().classifyTradeError(error);
+      const updatedAt = new Date().toISOString();
+      if (classification.category === 'FATAL') {
+        set((state) => {
+          const target = state.pendingTrades.find((item) => item.clientOrderId === clientOrderId);
+          if (!target) {
+            return state;
+          }
+
+          const failed: PendingTradeRecord = {
+            ...target,
+            status: classification.status,
+            lastErrorCode: classification.code,
+            updatedAt,
+          };
+          const pendingTrades = state.pendingTrades.filter((item) => item.clientOrderId !== clientOrderId);
+          return {
+            pendingTrades,
+            pendingTxs: pendingTrades.map(toActivityItem),
+            historyTxs: [toActivityItem(failed), ...state.historyTxs],
+            diagnostics: [`${updatedAt} trade fatal ${classification.code}`].concat(state.diagnostics).slice(0, 8),
+          };
+        });
+      } else {
+        set((state) => {
+          const pendingTrades: PendingTradeRecord[] = state.pendingTrades.map((item) => {
+            if (item.clientOrderId !== clientOrderId) {
+              return item;
+            }
+
+            const next: PendingTradeRecord = {
+              ...item,
+              status: classification.status,
+              retryCount: item.retryCount + 1,
+              lastErrorCode: classification.code,
+              nextRetryAt: new Date(Date.now() + 2000).toISOString(),
+              updatedAt,
+            };
+
+            return next;
+          });
+
+          return {
+            pendingTrades,
+            pendingTxs: pendingTrades.map(toActivityItem),
+            diagnostics: [`${updatedAt} trade recoverable ${classification.code}`].concat(state.diagnostics).slice(0, 8),
+          };
+        });
+      }
+      void savePendingTrades(get().pendingTrades);
+    }
+  },
+
+  pollTradeStatus: async (clientOrderId, startedAt = Date.now()) => {
+    const record = get().pendingTrades.find((item) => item.clientOrderId === clientOrderId);
+    if (!record) {
+      const timer = tradeTimers.get(clientOrderId);
+      if (timer) {
+        clearTimeout(timer);
+      }
+      tradeTimers.delete(clientOrderId);
+      return;
+    }
+
+    if (Date.now() - startedAt > 10 * 60 * 1000) {
+      const updatedAt = new Date().toISOString();
+      set((state) => {
+        const pendingTrades: PendingTradeRecord[] = state.pendingTrades.map((item) => {
+          if (item.clientOrderId !== clientOrderId) {
+            return item;
+          }
+
+          const next: PendingTradeRecord = {
+            ...item,
+            status: 'UNKNOWN_NEEDS_RECONCILE',
+            updatedAt,
+            lastErrorCode: 'POLL_TIMEOUT',
+          };
+
+          return next;
+        });
+        return {
+          pendingTrades,
+          pendingTxs: pendingTrades.map(toActivityItem),
+          diagnostics: [`${updatedAt} trade reconcile timeout ${clientOrderId}`].concat(state.diagnostics).slice(0, 8),
+        };
+      });
+      void savePendingTrades(get().pendingTrades);
+      return;
+    }
+
+    try {
+      const status = await fetchTradeStatus(record.txHash ?? record.clientOrderId);
+      const updatedAt = status.updatedAt ?? new Date().toISOString();
+      let shouldSchedule = false;
+
+      set((state) => {
+        const target = state.pendingTrades.find((item) => item.clientOrderId === clientOrderId);
+        if (!target) {
+          return state;
+        }
+
+        const merged: PendingTradeRecord = {
+          ...target,
+          txHash: status.txHash ?? target.txHash,
+          status: status.status,
+          lastErrorCode: status.errorCode,
+          updatedAt,
+        };
+
+        if (terminalStatuses.has(merged.status)) {
+          const pendingTrades = state.pendingTrades.filter((item) => item.clientOrderId !== clientOrderId);
+          return {
+            pendingTrades,
+            pendingTxs: pendingTrades.map(toActivityItem),
+            historyTxs: [toActivityItem(merged), ...state.historyTxs],
+            diagnostics: [`${updatedAt} trade terminal ${merged.status}`].concat(state.diagnostics).slice(0, 8),
+          };
+        }
+
+        shouldSchedule = retryStatuses.has(merged.status);
+        const pendingTrades = state.pendingTrades.map((item) => (item.clientOrderId === clientOrderId ? merged : item));
+        return {
+          pendingTrades,
+          pendingTxs: pendingTrades.map(toActivityItem),
+          diagnostics: [`${updatedAt} trade polled ${merged.status}`].concat(state.diagnostics).slice(0, 8),
+        };
+      });
+
+      void savePendingTrades(get().pendingTrades);
+
+      if (shouldSchedule) {
+        const elapsed = Date.now() - startedAt;
+        const delay = elapsed < 30000 ? 2000 : elapsed < 180000 ? 8000 : 30000;
+        const currentTimer = tradeTimers.get(clientOrderId);
+        if (currentTimer) {
+          clearTimeout(currentTimer);
+        }
+        const timer = setTimeout(() => {
+          void get().pollTradeStatus(clientOrderId, startedAt);
+        }, delay);
+        tradeTimers.set(clientOrderId, timer);
+      } else {
+        const currentTimer = tradeTimers.get(clientOrderId);
+        if (currentTimer) {
+          clearTimeout(currentTimer);
+        }
+        tradeTimers.delete(clientOrderId);
+      }
+    } catch (error) {
+      const classification = get().classifyTradeError(error);
+      const updatedAt = new Date().toISOString();
+
+      set((state) => {
+        const pendingTrades: PendingTradeRecord[] = state.pendingTrades.map((item) => {
+          if (item.clientOrderId !== clientOrderId) {
+            return item;
+          }
+
+          const next: PendingTradeRecord = {
+            ...item,
+            status: classification.status,
+            retryCount: item.retryCount + 1,
+            nextRetryAt: new Date(Date.now() + Math.min(30000, 2 ** (item.retryCount + 1) * 1000)).toISOString(),
+            lastErrorCode: classification.code,
+            updatedAt,
+          };
+
+          return next;
+        });
+
+        return {
+          pendingTrades,
+          pendingTxs: pendingTrades.map(toActivityItem),
+          diagnostics: [`${updatedAt} trade poll error ${classification.code}`].concat(state.diagnostics).slice(0, 8),
+        };
+      });
+
+      void savePendingTrades(get().pendingTrades);
+
+      if (classification.category === 'RETRYABLE') {
+        const timer = setTimeout(() => {
+          void get().pollTradeStatus(clientOrderId, startedAt);
+        }, 2000);
+        tradeTimers.set(clientOrderId, timer);
+      }
+    }
+  },
+
+  recoverPendingTrades: async () => {
+    const records = await loadPendingTrades();
+    set({
+      pendingTrades: records,
+      pendingTxs: records.map(toActivityItem),
+    });
+
+    records.forEach((record, index) => {
+      if (!retryStatuses.has(record.status)) {
         return;
       }
 
-      const confirmed = { ...latest, status: 'CONFIRMED' as const };
-      set((state) => ({
-        pendingTxs: state.pendingTxs.map((item) => (item.txHash === txHash ? confirmed : item)),
-      }));
-    }, 1200);
-
-    setTimeout(() => {
-      const latest = get().pendingTxs.find((item) => item.txHash === txHash);
-      if (!latest) {
-        return;
-      }
-
-      const indexed = { ...latest, status: 'INDEXED' as const };
-      set((state) => ({
-        pendingTxs: state.pendingTxs.filter((item) => item.txHash !== txHash),
-        historyTxs: [indexed, ...state.historyTxs],
-      }));
-    }, 2600);
+      const timer = setTimeout(() => {
+        void get().pollTradeStatus(record.clientOrderId);
+      }, Math.min(index * 350, 1500));
+      tradeTimers.set(record.clientOrderId, timer);
+    });
   },
 
   buildPositions: () => {

@@ -77,6 +77,7 @@ function parsePendingTrades(raw: string | null): PendingTradeRecord[] {
       return (
         typeof item.clientOrderId === 'string' &&
         typeof item.marketId === 'string' &&
+        typeof item.marketQuestion === 'string' &&
         isTradeAction(item.action) &&
         isTradeSide(item.side) &&
         typeof item.amount === 'number' &&

@@ -37,6 +37,7 @@ describe('storage utilities', () => {
         clientOrderId: 'order-1',
         txHash: '0xabc',
         marketId: 'MKT-1',
+        marketQuestion: 'Will ETH close above 5k by Friday?',
         action: 'BUY',
         side: 'YES',
         amount: 25,
@@ -65,6 +66,7 @@ describe('storage utilities', () => {
         {
           clientOrderId: 'order-2',
           marketId: 'MKT-2',
+          marketQuestion: 'Will BTC reclaim ATH?',
           action: 'SELL',
           side: 'NO',
           amount: 10,
@@ -76,6 +78,7 @@ describe('storage utilities', () => {
         {
           clientOrderId: 'broken',
           marketId: 'MKT-3',
+          marketQuestion: 'Broken record',
           action: 'HOLD',
           side: 'NO',
           amount: 10,
@@ -91,6 +94,7 @@ describe('storage utilities', () => {
       {
         clientOrderId: 'order-2',
         marketId: 'MKT-2',
+        marketQuestion: 'Will BTC reclaim ATH?',
         action: 'SELL',
         side: 'NO',
         amount: 10,

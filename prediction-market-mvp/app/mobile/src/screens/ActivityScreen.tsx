@@ -13,13 +13,26 @@ import { getThemePalette, motion, spacing, typography } from '../theme/tokens';
 import { TradeAction, TradeStatus } from '../types';
 import { filterActivity, mergeAndDedupeActivity } from '../utils/activity';
 
-const statusOptions: TradeStatus[] = ['PENDING', 'CONFIRMED', 'INDEXED', 'FAILED'];
+const statusOptions: TradeStatus[] = [
+  'PENDING',
+  'PENDING_CHAIN',
+  'CONFIRMED',
+  'INDEXED',
+  'FAILED_RETRYABLE',
+  'FAILED_FATAL',
+  'UNKNOWN_NEEDS_RECONCILE',
+  'FAILED',
+];
 const actionOptions: TradeAction[] = ['BUY', 'SELL'];
 
 const statusIcons: Record<TradeStatus, keyof typeof Ionicons.glyphMap> = {
   PENDING: 'time-outline',
+  PENDING_CHAIN: 'time-outline',
   CONFIRMED: 'checkmark-done-outline',
   INDEXED: 'server-outline',
+  FAILED_RETRYABLE: 'refresh-outline',
+  FAILED_FATAL: 'close-circle-outline',
+  UNKNOWN_NEEDS_RECONCILE: 'help-circle-outline',
   FAILED: 'close-circle-outline',
 };
 
@@ -55,9 +68,9 @@ export function ActivityScreen() {
 
   const merged = mergeAndDedupeActivity(pendingTxs, historyTxs);
   const visible = filterActivity(merged, activityFilters);
-  const pendingCount = merged.filter((item) => item.status === 'PENDING').length;
+  const pendingCount = merged.filter((item) => item.status === 'PENDING' || item.status === 'PENDING_CHAIN').length;
   const indexedCount = merged.filter((item) => item.status === 'INDEXED').length;
-  const failedCount = merged.filter((item) => item.status === 'FAILED').length;
+  const failedCount = merged.filter((item) => item.status === 'FAILED' || item.status === 'FAILED_FATAL').length;
 
   return (
     <Animated.View style={{ flex: 1, opacity: fade }}>

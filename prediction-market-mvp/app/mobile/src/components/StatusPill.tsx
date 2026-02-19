@@ -7,8 +7,12 @@ const palette: Record<string, { fg: string; bg: string }> = {
   CLOSED: { fg: '#8a5c1b', bg: '#f9eccf' },
   RESOLVED: { fg: '#1f4f8a', bg: '#dcecff' },
   PENDING: { fg: '#8a5c1b', bg: '#f9eccf' },
+  PENDING_CHAIN: { fg: '#8a5c1b', bg: '#f9eccf' },
   CONFIRMED: { fg: '#0f6d44', bg: '#d7f2e5' },
   INDEXED: { fg: '#1f4f8a', bg: '#dcecff' },
+  FAILED_RETRYABLE: { fg: '#8a5c1b', bg: '#f9eccf' },
+  FAILED_FATAL: { fg: '#7f1d1d', bg: '#fee2e2' },
+  UNKNOWN_NEEDS_RECONCILE: { fg: '#6b7280', bg: '#e5e7eb' },
   FAILED: { fg: '#7f1d1d', bg: '#fee2e2' },
 };
 

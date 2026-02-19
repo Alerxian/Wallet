@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { PoolBar } from '../components/charts/PoolBar';
 import { SparkBars } from '../components/charts/SparkBars';
+import { useMarketsQuery } from '../api/queries/marketsQuery';
 import { StatusPill } from '../components/StatusPill';
 import { Card } from '../components/ui/Card';
 import { Chip } from '../components/ui/Chip';
@@ -125,13 +126,10 @@ function MarketSkeletonList() {
 }
 
 export function MarketsScreen() {
-  const markets = useAppStore((state) => state.markets);
   const query = useAppStore((state) => state.query);
   const filters = useAppStore((state) => state.filters);
   const sortMode = useAppStore((state) => state.sortMode);
   const watchlistIds = useAppStore((state) => state.watchlistIds);
-  const loading = useAppStore((state) => state.loadingMarkets);
-  const loadMarkets = useAppStore((state) => state.loadMarkets);
   const setQuery = useAppStore((state) => state.setQuery);
   const setFilters = useAppStore((state) => state.setFilters);
   const setSortMode = useAppStore((state) => state.setSortMode);
@@ -140,6 +138,14 @@ export function MarketsScreen() {
   const recordRecentMarket = useAppStore((state) => state.recordRecentMarket);
   const recentMarketIds = useAppStore((state) => state.recentMarketIds);
   const themeMode = useAppStore((state) => state.themeMode);
+  const {
+    data: marketRows,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useMarketsQuery();
+  const markets = marketRows ?? [];
+  const loading = isLoading || isFetching;
   const palette = getThemePalette(themeMode);
 
   const [draftQuery, setDraftQuery] = useState(query);
@@ -169,7 +175,7 @@ export function MarketsScreen() {
         data={visibleMarkets}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl tintColor={palette.primary} refreshing={loading} onRefresh={() => void loadMarkets()} />}
+        refreshControl={<RefreshControl tintColor={palette.primary} refreshing={loading} onRefresh={() => void refetch()} />}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
             <Text style={[styles.eyebrow, { color: palette.accent }]}>LIVE BOOK</Text>

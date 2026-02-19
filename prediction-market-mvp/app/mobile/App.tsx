@@ -1,7 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, ImageBackground, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { queryClient } from './src/api/queryClient';
+import { useConfigureReactQueryNative } from './src/api/reactQueryNative';
 import { MainTab, useAppStore } from './src/store/appStore';
 import { TabBar } from './src/components/TabBar';
 import { MarketsScreen } from './src/screens/MarketsScreen';
@@ -19,6 +22,8 @@ const tabMap: Record<MainTab, ReactNode> = {
 };
 
 export default function App() {
+  useConfigureReactQueryNative();
+
   const currentTab = useAppStore((state) => state.currentTab);
   const selectedMarketId = useAppStore((state) => state.selectedMarketId);
   const themeMode = useAppStore((state) => state.themeMode);
@@ -109,52 +114,54 @@ export default function App() {
   const activeScreen = selectedMarketId ? <MarketDetailScreen /> : tabMap[currentTab];
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={[styles.safe, { backgroundColor: palette.bg }]} edges={['top', 'left', 'right']}>
-        <StatusBar style={themeMode === 'night' ? 'light' : 'dark'} />
-        <View style={styles.root}>
-          <ImageBackground source={require('./assets/splash-icon.png')} imageStyle={styles.image} style={styles.bg}>
-            <View style={[styles.overlay, { backgroundColor: palette.veil }]} />
-          </ImageBackground>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <SafeAreaView style={[styles.safe, { backgroundColor: palette.bg }]} edges={['top', 'left', 'right']}>
+          <StatusBar style={themeMode === 'night' ? 'light' : 'dark'} />
+          <View style={styles.root}>
+            <ImageBackground source={require('./assets/splash-icon.png')} imageStyle={styles.image} style={styles.bg}>
+              <View style={[styles.overlay, { backgroundColor: palette.veil }]} />
+            </ImageBackground>
 
-          <Animated.View
-            style={[
-              styles.page,
-              {
-                opacity: routeAnim,
-                transform: [
-                  {
-                    translateX: routeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [18, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-            key={route}
-          >
-            {activeScreen}
-          </Animated.View>
+            <Animated.View
+              style={[
+                styles.page,
+                {
+                  opacity: routeAnim,
+                  transform: [
+                    {
+                      translateX: routeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [18, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+              key={route}
+            >
+              {activeScreen}
+            </Animated.View>
 
-          {!selectedMarketId ? <TabBar /> : null}
+            {!selectedMarketId ? <TabBar /> : null}
 
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.ripple,
-              {
-                left: rippleOrigin.x - 6,
-                top: rippleOrigin.y - 6,
-                backgroundColor: rippleColor,
-                opacity: rippleOpacity,
-                transform: [{ scale: Animated.divide(ripple, 6) }],
-              },
-            ]}
-          />
-        </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.ripple,
+                {
+                  left: rippleOrigin.x - 6,
+                  top: rippleOrigin.y - 6,
+                  backgroundColor: rippleColor,
+                  opacity: rippleOpacity,
+                  transform: [{ scale: Animated.divide(ripple, 6) }],
+                },
+              ]}
+            />
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 

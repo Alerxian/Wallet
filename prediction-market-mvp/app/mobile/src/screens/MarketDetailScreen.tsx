@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMarketDetailQuery } from '../api/queries/marketDetailQuery';
 import { PoolBar } from '../components/charts/PoolBar';
 import { SparkBars } from '../components/charts/SparkBars';
 import { SegmentedControl } from '../components/SegmentedControl';
@@ -19,7 +20,6 @@ const QUICK_AMOUNTS = [5, 10, 25, 50, 100];
 export function MarketDetailScreen() {
   const selectedMarketId = useAppStore((state) => state.selectedMarketId);
   const setSelectedMarketId = useAppStore((state) => state.setSelectedMarketId);
-  const markets = useAppStore((state) => state.markets);
   const walletConnected = useAppStore((state) => state.walletConnected);
   const network = useAppStore((state) => state.network);
   const themeMode = useAppStore((state) => state.themeMode);
@@ -31,7 +31,8 @@ export function MarketDetailScreen() {
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY');
   const [amount, setAmount] = useState('');
 
-  const market = markets.find((item) => item.id === selectedMarketId);
+  const { data: market, isLoading } = useMarketDetailQuery(selectedMarketId);
+
   const amountState = useMemo(() => validateTradeAmount(amount), [amount]);
   const fade = useMemo(() => new Animated.Value(0), []);
 
@@ -42,6 +43,14 @@ export function MarketDetailScreen() {
       useNativeDriver: true,
     }).start();
   }, [fade]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.centered}>
+        <Text style={[styles.empty, { color: palette.textSecondary }]}>Loading market...</Text>
+      </View>
+    );
+  }
 
   if (!market) {
     return (
